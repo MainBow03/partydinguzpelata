@@ -1,0 +1,194 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function roomPath(roomId) {
+      return /databases/$(database)/documents/rooms/$(roomId);
+    }
+
+    function roomExists(roomId) {
+      return exists(roomPath(roomId));
+    }
+
+    function isMember(roomId) {
+      return signedIn() && exists(
+        /databases/$(database)/documents/rooms/$(roomId)/players/$(request.auth.uid)
+      );
+    }
+
+    function isHost(roomId) {
+      return signedIn() && roomExists(roomId) &&
+        get(roomPath(roomId)).data.hostUid == request.auth.uid;
+    }
+
+    function roomIsWaiting(roomId) {
+      return roomExists(roomId) && get(roomPath(roomId)).data.status == 'waiting';
+    }
+
+    function roomIsInLobby(roomId) {
+      return roomExists(roomId) && get(roomPath(roomId)).data.phase == 'lobby';
+    }
+
+    function roomAllowsReady(roomId) {
+      return roomExists(roomId) && (
+        get(roomPath(roomId)).data.phase == 'lobby' ||
+        get(roomPath(roomId)).data.phase == 'intro'
+      );
+    }
+
+    match /rooms/{roomId} {
+      // Si possono creare stanze solo per l'utente autenticato che ne diventa host.
+      allow create: if signedIn()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.phase == 'lobby'
+        && request.resource.data.maxPlayers is int
+        && request.resource.data.maxPlayers >= 4
+        && request.resource.data.maxPlayers <= 10
+        && request.resource.data.minigameCount is int
+        && request.resource.data.minigameCount >= 1
+        && request.resource.data.minigameCount <= 16
+        && request.resource.data.fillCPU is bool;
+
+      // Permette il browser delle sole lobby in attesa (usare where(status == 'waiting')).
+      allow list: if signedIn() && resource.data.status == 'waiting';
+      allow get: if signedIn() && (resource.data.status == 'waiting' || isMember(roomId));
+
+      // Le fasi della partita e la classifica sono scritte dall'host, non dai singoli giocatori.
+      allow update: if isHost(roomId)
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.maxPlayers >= 4
+        && request.resource.data.maxPlayers <= 10
+        && request.resource.data.minigameCount >= 1
+        && request.resource.data.minigameCount <= 16;
+      allow delete: if isHost(roomId) && resource.data.status == 'waiting';
+
+      match /players/{playerId} {
+        allow read: if isMember(roomId) || isHost(roomId);
+
+        // Un utente può entrare con il proprio ID Firebase; l'host può aggiungere le CPU.
+        allow create: if signedIn() && (
+          (playerId == request.auth.uid
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.isCPU == false
+            && request.resource.data.name is string
+            && request.resource.data.name.size() >= 2
+            && request.resource.data.name.size() <= 18
+            && roomIsWaiting(roomId)
+            && roomIsInLobby(roomId))
+          || (isHost(roomId)
+            && request.resource.data.isCPU == true
+            && request.resource.data.uid == playerId
+            && roomIsWaiting(roomId))
+        );
+
+        // Il giocatore può cambiare solo nome/personaggio/prontezza; i punteggi sono host-only.
+        allow update: if isHost(roomId) || (
+          signedIn()
+          && playerId == request.auth.uid
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.isCPU == false
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'characterId', 'characterName', 'characterImage', 'ready'
+          ])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 2
+          && request.resource.data.name.size() <= 18
+          && roomAllowsReady(roomId)
+        );
+
+        allow delete: if signedIn() && (playerId == request.auth.uid || isHost(roomId));
+      }
+
+      match /characters/{characterId} {
+        allow read: if isMember(roomId) || isHost(roomId);
+
+        // Ogni ritratto è una prenotazione atomica: non può appartenere a due giocatori.
+        allow create: if isHost(roomId) || (
+          isMember(roomId)
+          && roomIsInLobby(roomId)
+          && request.resource.data.playerUid == request.auth.uid
+        );
+        allow update: if isHost(roomId) || (
+          isMember(roomId)
+          && roomIsInLobby(roomId)
+          && resource.data.playerUid == request.auth.uid
+          && request.resource.data.playerUid == request.auth.uid
+        );
+        allow delete: if isHost(roomId) || (
+          signedIn() && resource.data.playerUid == request.auth.uid
+        );
+      }
+
+      // Progressi live per la classifica del minigioco.
+      // Ogni browser aggiorna solo il proprio documento; l'host pubblica gli NPC.
+      match /progress/{playerId} {
+        allow read: if isMember(roomId) || isHost(roomId);
+        allow create, update: if signedIn() && roomExists(roomId)
+          && get(roomPath(roomId)).data.status == 'playing'
+          && get(roomPath(roomId)).data.phase == 'active'
+          && request.resource.data.uid == playerId
+          && request.resource.data.gameIndex == get(roomPath(roomId)).data.gameIndex
+          && request.resource.data.matchNumber == get(roomPath(roomId)).data.matchNumber
+          && request.resource.data.gameId is string
+          && request.resource.data.ratio is number
+          && request.resource.data.ratio >= 0
+          && request.resource.data.ratio <= 1
+          && request.resource.data.value is string
+          && request.resource.data.status is string
+          && (
+            (playerId == request.auth.uid && request.resource.data.isCPU == false)
+            || (isHost(roomId) && request.resource.data.isCPU == true)
+          );
+        allow delete: if isHost(roomId);
+      }
+
+      // Stato condiviso per i minigiochi a turni. L'host crea il documento all'inizio;
+      // i membri lo aggiornano solo mentre la stessa partita/minigioco è attiva.
+      match /minigames/{stateId} {
+        allow read: if isMember(roomId) || isHost(roomId);
+        allow create: if isHost(roomId)
+          && get(roomPath(roomId)).data.phase == 'gameCountdown'
+          && request.resource.data.status == 'active'
+          && request.resource.data.type in ['bombpass', 'cutwire', 'tabelluno']
+          && request.resource.data.matchNumber == get(roomPath(roomId)).data.matchNumber
+          && request.resource.data.gameIndex == get(roomPath(roomId)).data.gameIndex;
+        allow update: if isMember(roomId)
+          && get(roomPath(roomId)).data.status == 'playing'
+          && get(roomPath(roomId)).data.phase == 'active'
+          && request.resource.data.type == resource.data.type
+          && request.resource.data.type in ['bombpass', 'cutwire', 'tabelluno']
+          && request.resource.data.matchNumber == resource.data.matchNumber
+          && request.resource.data.gameIndex == resource.data.gameIndex
+          && request.resource.data.matchNumber == get(roomPath(roomId)).data.matchNumber
+          && request.resource.data.gameIndex == get(roomPath(roomId)).data.gameIndex;
+        allow delete: if isHost(roomId);
+      }
+
+      // Ogni partecipante può inviare un solo risultato nel proprio documento per minigioco.
+      // L'host può aggiungere risultati CPU/timeout e leggere tutti i risultati.
+      match /results/{gameIndex}/players/{playerId} {
+        allow read: if isMember(roomId) || isHost(roomId);
+        allow create: if isHost(roomId) || (
+          signedIn()
+          && isMember(roomId)
+          && playerId == request.auth.uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.gameIndex is int
+          && request.resource.data.metric is number
+          && get(roomPath(roomId)).data.phase == 'active'
+          && request.resource.data.gameIndex == get(roomPath(roomId)).data.gameIndex
+        );
+        allow update, delete: if isHost(roomId);
+      }
+    }
+
+    // Statistiche private: ogni giocatore vede e aggiorna soltanto il proprio documento.
+    match /users/{userId} {
+      allow read, create, update, delete: if signedIn() && request.auth.uid == userId;
+    }
+  }
+}
