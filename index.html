@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Party Game Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a, #4c1d95);
+            color: white;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, .title-font {
+            font-family: 'Fredoka One', cursive;
+        }
+
+        .btn {
+            background: linear-gradient(to bottom, #f59e0b, #d97706);
+            border: 4px solid #78350f;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.3);
+            transition: all 0.1s;
+        }
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.3);
+        }
+        .btn:disabled {
+            background: #9ca3af; border-color: #4b5563; cursor: not-allowed; transform: none; box-shadow: none;
+        }
+
+        .char-card {
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .char-card:hover:not(.locked) {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255,255,255,0.5);
+        }
+        .char-card.selected { border-color: #22c55e; box-shadow: 0 0 20px #22c55e; }
+        .char-card.locked { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
+
+        /* Memory Game Styles */
+        .memory-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; max-width: 400px; margin: auto; }
+        .memory-card { 
+            aspect-ratio: 1; background: #374151; border-radius: 8px; 
+            display: flex; justify-content: center; align-items: center; font-size: 2rem; cursor: pointer;
+            transition: transform 0.3s; transform-style: preserve-3d;
+        }
+        .memory-card.flipped { background: white; cursor: default; }
+        .memory-card.matched { background: #86efac; cursor: default; }
+
+        /* Safe Game Styles */
+        .safe-key { background: #4b5563; border-radius: 8px; font-size: 1.5rem; font-weight: bold; cursor: pointer; }
+        .safe-key:active { background: #374151; }
+        .dot-green { background: #22c55e; }
+        .dot-yellow { background: #eab308; }
+        .dot-gray { background: #6b7280; }
+
+        /* Reflex Game */
+        #reflex-area { position: relative; width: 100%; height: 300px; background: rgba(0,0,0,0.3); border-radius: 12px; overflow: hidden; }
+        .reflex-target { position: absolute; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; font-weight: bold;}
+        .target-normal { background: #3b82f6; width: 60px; height: 60px; }
+        .target-rare { background: #eab308; width: 40px; height: 40px; }
+        .target-trap { background: #ef4444; width: 60px; height: 60px; }
+
+        .hidden { display: none !important; }
+        
+        #modal-overlay { background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Modal Box (replaces alert) -->
+    <div id="modal-overlay" class="fixed inset-0 z-50 hidden flex justify-center items-center">
+        <div class="bg-slate-800 p-6 rounded-xl border-4 border-blue-500 max-w-sm w-full text-center shadow-2xl">
+            <h3 id="modal-title" class="text-2xl title-font mb-4 text-yellow-400">Avviso</h3>
+            <p id="modal-msg" class="mb-6 text-lg"></p>
+            <button onclick="closeModal()" class="btn px-6 py-2 rounded-full font-bold text-white w-full">OK</button>
+        </div>
+    </div>
+
+    <!-- MAIN MENU -->
+    <div id="screen-menu" class="flex-1 flex flex-col items-center justify-center p-4">
+        <h1 class="text-6xl text-center mb-8 text-yellow-400 drop-shadow-md">PARTY<br>GAMES</h1>
+        
+        <div class="bg-white/10 p-6 rounded-2xl w-full max-w-md backdrop-blur-sm border border-white/20 shadow-xl">
+            <input type="text" id="player-name" placeholder="Inserisci il tuo nome" class="w-full p-4 rounded-xl text-slate-900 font-bold mb-4 text-center text-xl focus:outline-none focus:ring-4 focus:ring-yellow-400" maxlength="12">
+            
+            <div class="grid gap-4">
+                <button onclick="showCreateRoom()" class="btn py-4 rounded-xl font-bold text-xl text-white">Crea Stanza</button>
+                <button onclick="showJoinRoom()" class="btn py-4 rounded-xl font-bold text-xl text-white">Unisciti con Codice</button>
+                <!-- Lobbies and Stats omitted for simplicity in this V1, focusing on core gameplay -->
+            </div>
+        </div>
+    </div>
+
+    <!-- CREATE ROOM SETUP -->
+    <div id="screen-create" class="flex-1 flex flex-col items-center justify-center p-4 hidden">
+        <h2 class="text-4xl mb-6 text-yellow-400 drop-shadow-md">Impostazioni Stanza</h2>
+        
+        <div class="bg-white/10 p-6 rounded-2xl w-full max-w-md backdrop-blur-sm border border-white/20">
+            <div class="mb-4">
+                <label class="block mb-2 font-bold">Numero di giocatori (4-10):</label>
+                <input type="number" id="setting-players" min="4" max="10" value="4" class="w-full p-3 rounded-lg text-slate-900 font-bold text-center">
+            </div>
+            <div class="mb-4">
+                <label class="block mb-2 font-bold">Numero di minigiochi (1-10):</label>
+                <input type="number" id="setting-games" min="1" max="10" value="3" class="w-full p-3 rounded-lg text-slate-900 font-bold text-center">
+            </div>
+            <div class="mb-6 flex items-center justify-between">
+                <label class="font-bold">Riempi slot con CPU:</label>
+                <input type="checkbox" id="setting-cpu" checked class="w-6 h-6">
+            </div>
+            
+            <div class="flex gap-4">
+                <button onclick="showScreen('screen-menu')" class="btn py-3 px-6 rounded-xl font-bold text-white bg-slate-500 flex-1">Indietro</button>
+                <button onclick="createRoom()" class="btn py-3 px-6 rounded-xl font-bold text-white flex-1">Crea</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JOIN ROOM -->
+    <div id="screen-join" class="flex-1 flex flex-col items-center justify-center p-4 hidden">
+        <h2 class="text-4xl mb-6 text-yellow-400 drop-shadow-md">Unisciti</h2>
+        <div class="bg-white/10 p-6 rounded-2xl w-full max-w-md backdrop-blur-sm border border-white/20">
+            <input type="text" id="join-code" placeholder="Codice Stanza (Es: ABCD)" class="w-full p-4 rounded-xl text-slate-900 font-bold mb-4 text-center text-2xl uppercase">
+            <div class="flex gap-4">
+                <button onclick="showScreen('screen-menu')" class="btn py-3 px-6 rounded-xl font-bold text-white bg-slate-500 flex-1">Indietro</button>
+                <button onclick="joinRoom()" class="btn py-3 px-6 rounded-xl font-bold text-white flex-1">Entra</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOBBY & CHAR SELECT -->
+    <div id="screen-lobby" class="flex-1 flex flex-col p-4 hidden max-w-4xl mx-auto w-full">
+        <div class="flex justify-between items-center mb-4 bg-black/30 p-4 rounded-xl">
+            <h2 class="text-2xl text-yellow-400">Codice Stanza: <span id="lobby-code-display" class="font-mono bg-white/20 px-2 py-1 rounded">---</span></h2>
+            <div class="text-xl">Giocatori: <span id="lobby-count">1/4</span></div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
+            <!-- Roster -->
+            <div class="md:col-span-2 bg-white/10 p-4 rounded-xl border border-white/20 overflow-y-auto max-h-[60vh]">
+                <h3 class="text-xl mb-4 title-font text-center">Scegli il tuo Personaggio</h3>
+                <div id="char-grid" class="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                    <!-- Generato via JS -->
+                </div>
+            </div>
+
+            <!-- Players in room -->
+            <div class="bg-black/40 p-4 rounded-xl flex flex-col">
+                <h3 class="text-xl mb-4 title-font text-center text-green-400">Giocatori Pronti</h3>
+                <ul id="players-list" class="space-y-3 flex-1 overflow-y-auto">
+                    <!-- Generato via JS -->
+                </ul>
+                
+                <button id="btn-ready" onclick="toggleReady()" class="btn mt-4 py-4 rounded-xl font-bold text-xl text-white w-full" disabled>Metti Pronto</button>
+                <button id="btn-start-game" onclick="startGame()" class="btn mt-2 py-4 rounded-xl font-bold text-xl text-white w-full hidden bg-green-500 border-green-800">Avvia Partita!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME CONTAINER -->
+    <div id="screen-game" class="flex-1 flex flex-col hidden p-2 max-w-5xl mx-auto w-full">
+        
+        <!-- Header (Scores and Info) -->
+        <div class="flex justify-between items-center bg-black/50 p-2 rounded-xl mb-2 text-sm sm:text-base">
+            <div class="font-bold text-yellow-400" id="game-status">Round 1/5</div>
+            <div class="flex gap-2 items-center">
+                <span>La tua pos: <span id="my-rank" class="font-bold text-white">-</span></span>
+                <span class="mx-2">|</span>
+                <span>Punti: <span id="my-score" class="font-bold text-green-400">0</span></span>
+            </div>
+        </div>
+
+        <!-- Inner Game Screens -->
+        <div id="game-inner-content" class="flex-1 bg-white/10 rounded-xl border border-white/20 relative overflow-hidden flex flex-col">
+            
+            <!-- INTRO SCREEN -->
+            <div id="minigame-intro" class="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 p-6 text-center">
+                <h2 id="intro-title" class="text-5xl text-yellow-400 mb-4 title-font animate-bounce">Nome Gioco</h2>
+                <p id="intro-desc" class="text-xl mb-8 max-w-lg">Descrizione di come si gioca...</p>
+                <div class="flex flex-wrap justify-center gap-4 mb-8" id="intro-players-status">
+                    <!-- Iconcine di chi è pronto -->
+                </div>
+                <button id="btn-intro-ready" onclick="setReadyForMinigame()" class="btn py-3 px-8 rounded-xl font-bold text-xl text-white">Pronto!</button>
+            </div>
+
+            <!-- COUNTDOWN -->
+            <div id="countdown-overlay" class="absolute inset-0 flex items-center justify-center bg-black/60 z-30 hidden">
+                <span id="countdown-text" class="text-9xl title-font text-white drop-shadow-[0_0_20px_rgba(255,255,255,1)]">3</span>
+            </div>
+
+            <!-- ACTUAL MINIGAME AREA (Dynamic) -->
+            <div id="minigame-area" class="flex-1 p-4 relative hidden flex flex-col">
+                <!-- Content injected via JS based on game -->
+            </div>
+
+            <!-- IN-GAME LEADERBOARD (Sidebar) -->
+            <div id="ingame-leaderboard" class="absolute right-0 top-0 bottom-0 w-48 bg-black/80 border-l border-white/20 p-2 overflow-y-auto hidden">
+                <h4 class="text-center font-bold text-yellow-400 mb-2 border-b border-gray-600 pb-1">Classifica</h4>
+                <div id="ingame-leaderboard-list" class="space-y-2 text-sm">
+                    <!-- Populated JS -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FINAL RESULTS -->
+    <div id="screen-results" class="flex-1 flex flex-col items-center justify-center p-4 hidden">
+        <h2 class="text-6xl mb-8 text-yellow-400 drop-shadow-md title-font animate-pulse">RISULTATI FINALI</h2>
+        <div class="bg-black/60 p-8 rounded-3xl w-full max-w-2xl border-4 border-yellow-500">
+            <ul id="final-standings" class="space-y-4">
+                <!-- JS -->
+            </ul>
+        </div>
+        <button onclick="window.location.reload()" class="btn mt-8 py-4 px-8 rounded-xl font-bold text-xl text-white">Torna al Menu</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, collection, query, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config (User provided)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrXTAOKGL0X76GBQ8Sdj4sBcYiEoKdhB0",
+            authDomain: "mario-party-style-game.firebaseapp.com",
+            projectId: "mario-party-style-game",
+            storageBucket: "mario-party-style-game.firebasestorage.app",
+            messagingSenderId: "443206292657",
+            appId: "1:443206292657:web:ab633567201a700da4be90",
+            measurementId: "G-93MF2N98C1"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // App Constants & State
+        const APP_ID = 'party-game-online'; // Per rispettare le regole di path
+        let myId = null;
+        let myName = "";
+        let currentRoomId = null;
+        let isHost = false;
+        let roomData = null;
+        let playersData = {}; // map of id -> data
+        let unsubscribeRoom = null;
+        let unsubscribePlayers = null;
+
+        // Roster
+        const ROSTER = [
+            { id: 'g1', cat: 'Gumball', n: 'Gumball', i: 'https://i.pinimg.com/736x/af/61/0f/af610f55e819f4bd3f37e5001a2b19ee.jpg' },
+            { id: 'g2', cat: 'Gumball', n: 'Darwin', i: 'https://i.pinimg.com/1200x/5a/cf/9c/5acf9c886678411963046b04051e610e.jpg' },
+            { id: 'g3', cat: 'Gumball', n: 'Anais', i: 'https://i.pinimg.com/736x/68/6f/3c/686f3c8f998bf2d90e5e4c294e007788.jpg' },
+            { id: 'g4', cat: 'Gumball', n: 'Nicole', i: 'https://i.pinimg.com/736x/81/24/e4/8124e43da43e1d06dcdbca15f22a0cd9.jpg' },
+            { id: 'dc1', cat: 'Disventure', n: 'Tom', i: 'https://i.pinimg.com/736x/db/d4/2a/dbd42a105be5cd57fa6a0ed9a8ab7df8.jpg' },
+            { id: 'dc9', cat: 'Disventure', n: 'Fiore', i: 'https://i.pinimg.com/736x/97/ed/43/97ed439990f0819b9441ea5503d36bf9.jpg' },
+            { id: 's3', cat: 'Simpson', n: 'Bart', i: 'https://i.pinimg.com/1200x/03/11/09/031109591c66397c76e7489d42f3127d.jpg' },
+            { id: 'sb1', cat: 'Spongebob', n: 'Spongebob', i: 'https://i.pinimg.com/736x/08/9d/56/089d562f45d59b2f7e37e643a5ebf927.jpg' },
+            { id: 'sb2', cat: 'Spongebob', n: 'Patrick', i: 'https://i.pinimg.com/736x/64/a3/f7/64a3f72a484c92329ba86e33263f2478.jpg' },
+            { id: 'prin2', cat: 'Principesse', n: 'Peach', i: 'https://i.pinimg.com/736x/98/65/39/986539a9ccd1408d51eb061df724377f.jpg' },
+            { id: 'sm1', cat: 'Mario', n: 'Mario', i: 'https://i.pinimg.com/736x/be/2d/98/be2d98feb1899ffa3d713423b50cbb98.jpg' },
+            { id: 'ig3', cat: 'Griffin', n: 'Stewie', i: 'https://i.pinimg.com/736x/f3/05/30/f30530fb1e9e118e7f66568d82c05bc5.jpg' },
+            { id: 'su1', cat: 'Steven', n: 'Steven', i: 'https://i.pinimg.com/736x/13/7e/1f/137e1fe49b450be5b1bd4785f4f19963.jpg' }
+        ]; // Accorciato per comodità, ma ci sono abbastanza personaggi per 10 giocatori.
+
+        const MINIGAMES = [
+            { id: 'memory', name: 'Memory Madness', desc: 'Trova tutte le coppie il più velocemente possibile! Se sbagli attendi 2 secondi.' },
+            { id: 'reflex', name: 'Acchiappa Tutto', desc: 'Clicca i bersagli BLU (+1) e GIALLI (+3). EVITA i ROSSI (-2)! Hai 30 secondi.' },
+            { id: 'safe', name: 'Cassaforte Infernale', desc: 'Indovina il codice! Verde: Giusto. Giallo: Numero presente ma posizione errata. Completa 3 round!' }
+        ];
+
+        // --- UTILS ---
+        window.showModal = (title, msg) => {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-msg').innerText = msg;
+            document.getElementById('modal-overlay').classList.remove('hidden');
+        };
+        window.closeModal = () => document.getElementById('modal-overlay').classList.add('hidden');
+        window.showScreen = (id) => {
+            ['screen-menu', 'screen-create', 'screen-join', 'screen-lobby', 'screen-game', 'screen-results'].forEach(s => {
+                document.getElementById(s).classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
+        };
+        const generateCode = () => Math.random().toString(36).substring(2, 6).toUpperCase();
+        const getRoomRef = (roomId) => doc(db, 'artifacts', APP_ID, 'public', 'rooms', roomId);
+        const getPlayersCol = (roomId) => collection(db, 'artifacts', APP_ID, 'public', 'rooms', roomId, 'players');
+
+        // --- AUTH & INIT ---
+        signInAnonymously(auth).then((userCred) => {
+            myId = userCred.user.uid;
+            console.log("Auth success", myId);
+        }).catch(e => showModal("Errore", "Impossibile connettersi al server."));
+
+        window.showCreateRoom = () => {
+            myName = document.getElementById('player-name').value.trim() || "Giocatore" + Math.floor(Math.random()*100);
+            showScreen('screen-create');
+        };
+        window.showJoinRoom = () => {
+            myName = document.getElementById('player-name').value.trim() || "Giocatore" + Math.floor(Math.random()*100);
+            showScreen('screen-join');
+        };
+
+        // --- LOBBY CREATION & JOINING ---
+        window.createRoom = async () => {
+            if(!myId) return;
+            const code = generateCode();
+            currentRoomId = code;
+            isHost = true;
+            
+            const maxPlayers = parseInt(document.getElementById('setting-players').value);
+            const numGames = parseInt(document.getElementById('setting-games').value);
+            const useCPU = document.getElementById('setting-cpu').checked;
+
+            // Seleziona minigiochi casuali
+            let selectedGames = [];
+            for(let i=0; i<numGames; i++){
+                selectedGames.push(MINIGAMES[Math.floor(Math.random() * MINIGAMES.length)]);
+            }
+
+            const roomInitialData = {
+                code: code,
+                state: 'lobby', // lobby, char_select, intro, playing, results
+                maxPlayers, useCPU, numGames,
+                gamesList: selectedGames,
+                currentGameIdx: 0,
+                hostId: myId,
+                createdAt: Date.now()
+            };
+
+            try {
+                await setDoc(getRoomRef(code), roomInitialData);
+                await joinRoomLogic(code);
+                
+                if(useCPU) {
+                    // Crea CPU bots
+                    for(let i=1; i<maxPlayers; i++) {
+                        const botId = 'cpu_' + i;
+                        await setDoc(doc(getPlayersCol(code), botId), {
+                            id: botId,
+                            name: 'CPU ' + i,
+                            isCPU: true,
+                            charId: null,
+                            ready: false,
+                            score: 0,
+                            minigameState: {},
+                            status: 'waiting'
+                        });
+                    }
+                }
+            } catch(e) {
+                console.error(e);
+                showModal("Errore", "Impossibile creare stanza.");
+            }
+        };
+
+        window.joinRoom = async () => {
+            if(!myId) return;
+            const code = document.getElementById('join-code').value.trim().toUpperCase();
+            if(!code) return showModal("Attenzione", "Inserisci un codice.");
+            
+            try {
+                const docSnap = await getDoc(getRoomRef(code));
+                if(!docSnap.exists()) return showModal("Attenzione", "Stanza non trovata.");
+                const data = docSnap.data();
+                if(data.state !== 'lobby') return showModal("Attenzione", "Partita già in corso.");
+                
+                currentRoomId = code;
+                isHost = false;
+                await joinRoomLogic(code);
+            } catch(e) { showModal("Errore", "Impossibile unirsi."); }
+        };
+
+        const joinRoomLogic = async (code) => {
+            // Aggiungi me stesso
+            await setDoc(doc(getPlayersCol(code), myId), {
+                id: myId, name: myName, isCPU: false, charId: null, ready: false, score: 0, minigameState: {}, status: 'waiting'
+            });
+            startListening(code);
+            showScreen('screen-lobby');
+            document.getElementById('lobby-code-display').innerText = code;
+            renderCharGrid();
+        };
+
+        const startListening = (code) => {
+            unsubscribeRoom = onSnapshot(getRoomRef(code), (snap) => {
+                if(snap.exists()) {
+                    const oldState = roomData ? roomData.state : null;
+                    roomData = snap.data();
+                    handleRoomStateChange(oldState, roomData.state);
+                }
+            });
+
+            unsubscribePlayers = onSnapshot(getPlayersCol(code), (snap) => {
+                playersData = {};
+                snap.forEach(d => { playersData[d.id] = d.data(); });
+                updateLobbyUI();
+                updateInGameUI();
+                if(isHost) checkHostTriggers();
+            });
+        };
+
+        const checkHostTriggers = async () => {
+            if(!roomData || !isHost) return;
+            const pArray = Object.values(playersData);
+            
+            // Trigger 1: Tutti pronti in lobby
+            if(roomData.state === 'lobby') {
+                const allReady = pArray.every(p => p.ready);
+                if(allReady && pArray.length > 0) {
+                    await updateDoc(getRoomRef(currentRoomId), { state: 'intro' });
+                }
+            }
+            
+            // Trigger 2: Tutti pronti nell'intro del minigioco
+            if(roomData.state === 'intro') {
+                const allReady = pArray.every(p => p.status === 'ready_for_game');
+                if(allReady) {
+                    await updateDoc(getRoomRef(currentRoomId), { state: 'playing', startTrigger: Date.now() });
+                }
+            }
+
+            // Trigger 3: Minigioco finito (tutti hanno status 'finished')
+            if(roomData.state === 'playing') {
+                const allDone = pArray.every(p => p.status === 'finished');
+                if(allDone && pArray.length > 0) {
+                    handleMinigameEnd();
+                }
+            }
+        };
+
+        // --- LOBBY UI & LOGIC ---
+        const renderCharGrid = () => {
+            const grid = document.getElementById('char-grid');
+            grid.innerHTML = '';
+            ROSTER.forEach(c => {
+                const d = document.createElement('div');
+                d.className = `char-card relative rounded-lg overflow-hidden border-2 border-transparent bg-slate-800`;
+                d.id = `char-${c.id}`;
+                d.onclick = () => selectCharacter(c.id);
+                d.innerHTML = `
+                    <img src="${c.i}" class="w-full h-24 object-cover object-top pointer-events-none" onerror="this.src='https://placehold.co/100x100/333/FFF?text=?';">
+                    <div class="absolute bottom-0 w-full bg-black/70 text-xs text-center py-1 font-bold truncate px-1">${c.n}</div>
+                `;
+                grid.appendChild(d);
+            });
+        };
+
+        window.selectCharacter = async (charId) => {
+            if(playersData[myId]?.ready) return; // Locked in
+            // Check if taken
+            const taken = Object.values(playersData).some(p => p.charId === charId && p.id !== myId);
+            if(taken) return;
+
+            await updateDoc(doc(getPlayersCol(currentRoomId), myId), { charId: charId });
+        };
+
+        const updateLobbyUI = () => {
+            if(roomData?.state !== 'lobby') return;
+            
+            const pArray = Object.values(playersData);
+            
+            // Update CPU characters logic (Host side simulation)
+            if(isHost) {
+                pArray.filter(p => p.isCPU && !p.ready).forEach(async (cpu) => {
+                    const takenIds = pArray.map(p => p.charId).filter(id => id);
+                    const available = ROSTER.filter(r => !takenIds.includes(r.id));
+                    if(available.length > 0) {
+                        const pick = available[Math.floor(Math.random() * available.length)].id;
+                        await updateDoc(doc(getPlayersCol(currentRoomId), cpu.id), { charId: pick, ready: true });
+                    }
+                });
+            }
+
+            // Update Char Grid visuals
+            ROSTER.forEach(c => {
+                const el = document.getElementById(`char-${c.id}`);
+                if(!el) return;
+                const owner = pArray.find(p => p.charId === c.id);
+                el.classList.remove('selected', 'locked');
+                if(owner) {
+                    if(owner.id === myId) el.classList.add('selected');
+                    else el.classList.add('locked');
+                }
+            });
+
+            // Update List
+            const list = document.getElementById('players-list');
+            list.innerHTML = '';
+            let humanCount = 0;
+            pArray.forEach(p => {
+                if(!p.isCPU) humanCount++;
+                const char = ROSTER.find(c => c.id === p.charId);
+                const isMe = p.id === myId;
+                list.innerHTML += `
+                    <li class="flex items-center gap-3 bg-black/30 p-2 rounded-lg border ${p.ready ? 'border-green-500' : 'border-gray-600'}">
+                        <img src="${char ? char.i : 'https://placehold.co/40x40/000/FFF?text=?'}" class="w-10 h-10 rounded-full object-cover">
+                        <span class="flex-1 font-bold ${isMe ? 'text-yellow-400' : ''}">${p.name}</span>
+                        <span>${p.ready ? '✅' : '⏳'}</span>
+                    </li>
+                `;
+            });
+
+            document.getElementById('lobby-count').innerText = `${pArray.length}/${roomData.maxPlayers}`;
+            
+            const myPlayer = playersData[myId];
+            const btnReady = document.getElementById('btn-ready');
+            if(myPlayer && myPlayer.charId) {
+                btnReady.disabled = false;
+                btnReady.innerText = myPlayer.ready ? "Annulla Pronto" : "Metti Pronto";
+                btnReady.className = myPlayer.ready ? "btn mt-4 py-4 rounded-xl font-bold text-xl text-white w-full bg-gray-500" : "btn mt-4 py-4 rounded-xl font-bold text-xl text-white w-full bg-green-500";
+            }
+        };
+
+        window.toggleReady = async () => {
+            const current = playersData[myId].ready;
+            await updateDoc(doc(getPlayersCol(currentRoomId), myId), { ready: !current });
+        };
+
+        // --- GAME LOOP ENGINE ---
+        const handleRoomStateChange = (oldState, newState) => {
+            if(newState === 'intro') {
+                showScreen('screen-game');
+                setupGameIntro();
+            } else if (newState === 'playing' && oldState !== 'playing') {
+                startCountdownThenGame();
+            } else if (newState === 'results') {
+                showFinalResults();
+            }
+        };
+
+        const setupGameIntro = () => {
+            const gameData = roomData.gamesList[roomData.currentGameIdx];
+            document.getElementById('minigame-intro').classList.remove('hidden');
+            document.getElementById('minigame-area').classList.add('hidden');
+            document.getElementById('ingame-leaderboard').classList.add('hidden');
+            
+            document.getElementById('intro-title').innerText = gameData.name;
+            document.getElementById('intro-desc').innerText = gameData.desc;
+            
+            document.getElementById('game-status').innerText = `Round ${roomData.currentGameIdx + 1} di ${roomData.numGames}`;
+            
+            // Reset my status
+            updateDoc(doc(getPlayersCol(currentRoomId), myId), { status: 'waiting_for_game', minigameState: {} });
+
+            // CPU auto ready
+            if(isHost) {
+                Object.values(playersData).filter(p => p.isCPU).forEach(cpu => {
+                    updateDoc(doc(getPlayersCol(currentRoomId), cpu.id), { status: 'ready_for_game', minigameState: {} });
+                });
+            }
+        };
+
+        window.setReadyForMinigame = async () => {
+            document.getElementById('btn-intro-ready').disabled = true;
+            document.getElementById('btn-intro-ready').innerText = "In attesa degli altri...";
+            await updateDoc(doc(getPlayersCol(currentRoomId), myId), { status: 'ready_for_game' });
+        };
+
+        const startCountdownThenGame = () => {
+            document.getElementById('minigame-intro').classList.add('hidden');
+            const overlay = document.getElementById('countdown-overlay');
+            const text = document.getElementById('countdown-text');
+            overlay.classList.remove('hidden');
+            
+            let count = 3;
+            text.innerText = count;
+            const iv = setInterval(() => {
+                count--;
+                if(count > 0) {
+                    text.innerText = count;
+                } else {
+                    clearInterval(iv);
+                    overlay.classList.add('hidden');
+                    launchSpecificMinigame();
+                }
+            }, 1000);
+        };
+
+        // --- SPECIFIC MINIGAME LAUNCHER ---
+        let gameLoopInterval = null;
+        let currentGameEngine = null;
+
+        const launchSpecificMinigame = () => {
+            const area = document.getElementById('minigame-area');
+            area.classList.remove('hidden');
+            area.innerHTML = '';
+            document.getElementById('ingame-leaderboard').classList.remove('hidden');
+            
+            const gameType = roomData.gamesList[roomData.currentGameIdx].id;
+            
+            // Reset state in memoria
+            if(gameLoopInterval) clearInterval(gameLoopInterval);
+
+            if(gameType === 'memory') currentGameEngine = new MemoryGame(area);
+            else if (gameType === 'reflex') currentGameEngine = new ReflexGame(area);
+            else if (gameType === 'safe') currentGameEngine = new SafeGame(area);
+            else area.innerHTML = "<h2 class='text-center mt-10'>Minigioco In Sviluppo...</h2>";
+
+            if(currentGameEngine) currentGameEngine.start();
+
+            // Avvia loop per bot se host
+            if(isHost) {
+                gameLoopInterval = setInterval(() => {
+                    if(currentGameEngine && currentGameEngine.simulateCPU) {
+                        currentGameEngine.simulateCPU();
+                    }
+                }, 1000);
+            }
+        };
+
+        // --- IN GAME UI & SCORES ---
+        const updateInGameUI = () => {
+            if(!roomData || (roomData.state !== 'intro' && roomData.state !== 'playing')) return;
+
+            // Intro status
+            if(roomData.state === 'intro') {
+                const statusDiv = document.getElementById('intro-players-status');
+                statusDiv.innerHTML = '';
+                Object.values(playersData).forEach(p => {
+                    const char = ROSTER.find(c => c.id === p.charId);
+                    const opacity = p.status === 'ready_for_game' ? 'opacity-100' : 'opacity-30 grayscale';
+                    statusDiv.innerHTML += `<img src="${char?.i}" class="w-12 h-12 rounded-full border-2 border-white object-cover ${opacity}">`;
+                });
+            }
+
+            // General Header
+            document.getElementById('my-score').innerText = playersData[myId]?.score || 0;
+
+            // Leaderboard Side
+            if(roomData.state === 'playing') {
+                const list = document.getElementById('ingame-leaderboard-list');
+                let sorted = Object.values(playersData).sort((a,b) => {
+                    // Criterio di ordinamento dinamico basato sul minigioco
+                    const valA = a.minigameState?.progress || 0;
+                    const valB = b.minigameState?.progress || 0;
+                    return valB - valA; // decrescente
+                });
+
+                // Trova la mia posizione
+                const myIndex = sorted.findIndex(p => p.id === myId);
+                document.getElementById('my-rank').innerText = (myIndex + 1) + "°";
+
+                list.innerHTML = '';
+                sorted.forEach((p, idx) => {
+                    const isMe = p.id === myId;
+                    const char = ROSTER.find(c => c.id === p.charId);
+                    const prog = p.minigameState?.progress || 0;
+                    list.innerHTML += `
+                        <div class="flex items-center gap-2 p-1 ${isMe ? 'bg-yellow-500/30' : ''} ${p.status==='finished'?'opacity-50':''}">
+                            <div class="font-bold w-4">${idx+1}.</div>
+                            <img src="${char?.i}" class="w-6 h-6 rounded-full object-cover">
+                            <div class="flex-1 truncate">${p.name}</div>
+                            <div class="font-mono text-xs">${prog}</div>
+                        </div>
+                    `;
+                });
+            }
+        };
+
+        window.finishCurrentMinigame = async (finalProgress) => {
+            if(playersData[myId].status === 'finished') return;
+            await updateDoc(doc(getPlayersCol(currentRoomId), myId), { 
+                status: 'finished',
+                'minigameState.progress': finalProgress,
+                'minigameState.finishTime': Date.now()
+            });
+            document.getElementById('minigame-area').innerHTML = `<div class="flex-1 flex flex-col items-center justify-center"><h2 class="text-4xl text-green-400 title-font mb-4">Completato!</h2><p>In attesa degli altri...</p></div>`;
+        };
+
+        // Host only
+        const handleMinigameEnd = async () => {
+            if(gameLoopInterval) clearInterval(gameLoopInterval);
+            
+            // Calcola punteggi
+            const pArray = Object.values(playersData);
+            
+            // Ordinamento per assegnare punti. 
+            // Dipende dal gioco: Memory/Safe vince chi finisce prima (finishTime minore)
+            // Reflex vince chi ha progress maggiore.
+            const gameType = roomData.gamesList[roomData.currentGameIdx].id;
+            
+            pArray.sort((a,b) => {
+                if(gameType === 'reflex') return b.minigameState.progress - a.minigameState.progress;
+                return (a.minigameState.finishTime || Infinity) - (b.minigameState.finishTime || Infinity);
+            });
+
+            const pointsSystem = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1];
+            
+            // Assegna
+            for(let i=0; i<pArray.length; i++) {
+                const p = pArray[i];
+                const pointsEarned = pointsSystem[i] || 1; // Fallback
+                await updateDoc(doc(getPlayersCol(currentRoomId), p.id), {
+                    score: p.score + pointsEarned
+                });
+            }
+
+            // Prossimo step
+            const nextIdx = roomData.currentGameIdx + 1;
+            if(nextIdx >= roomData.numGames) {
+                await updateDoc(getRoomRef(currentRoomId), { state: 'results' });
+            } else {
+                await updateDoc(getRoomRef(currentRoomId), { state: 'intro', currentGameIdx: nextIdx });
+            }
+        };
+
+        // ==========================================
+        // MINIGAME 1: MEMORY (Grid 6x6 = 36 cards = 18 pairs)
+        // ==========================================
+        class MemoryGame {
+            constructor(container) {
+                this.container = container;
+                this.emojis = ['🍎','🍌','🍇','🍉','🍓','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🌽','🥕','🥔'];
+                this.cards = [...this.emojis, ...this.emojis].sort(() => Math.random() - 0.5);
+                this.flipped = [];
+                this.matched = 0;
+                this.locked = false;
+            }
+            start() {
+                this.container.innerHTML = `<div class="memory-grid" id="mem-grid"></div>`;
+                const grid = document.getElementById('mem-grid');
+                this.cards.forEach((e, i) => {
+                    const c = document.createElement('div');
+                    c.className = 'memory-card bg-slate-700';
+                    c.dataset.idx = i;
+                    c.dataset.emoji = e;
+                    c.onclick = () => this.flip(c);
+                    grid.appendChild(c);
+                });
+                this.syncProgress();
+            }
+            flip(card) {
+                if(this.locked || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+                
+                card.classList.add('flipped');
+                card.innerText = card.dataset.emoji;
+                this.flipped.push(card);
+
+                if(this.flipped.length === 2) {
+                    this.locked = true;
+                    if(this.flipped[0].dataset.emoji === this.flipped[1].dataset.emoji) {
+                        setTimeout(() => {
+                            this.flipped[0].classList.add('matched');
+                            this.flipped[1].classList.add('matched');
+                            this.flipped = [];
+                            this.matched++;
+                            this.locked = false;
+                            this.syncProgress();
+                            if(this.matched === 18) finishCurrentMinigame(this.matched);
+                        }, 500);
+                    } else {
+                        // Penalità 2 secondi
+                        setTimeout(() => {
+                            this.flipped[0].classList.remove('flipped');
+                            this.flipped[0].innerText = '';
+                            this.flipped[1].classList.remove('flipped');
+                            this.flipped[1].innerText = '';
+                            this.flipped = [];
+                            this.locked = false;
+                        }, 2000);
+                    }
+                }
+            }
+            syncProgress() {
+                updateDoc(doc(getPlayersCol(currentRoomId), myId), { 'minigameState.progress': this.matched });
+            }
+            simulateCPU() {
+                // Host run this for bots
+                Object.values(playersData).filter(p => p.isCPU && p.status !== 'finished').forEach(cpu => {
+                    let prog = cpu.minigameState?.progress || 0;
+                    if(Math.random() > 0.6) prog += 1; // Chance to find a pair
+                    if(prog >= 18) {
+                        updateDoc(doc(getPlayersCol(currentRoomId), cpu.id), { status: 'finished', 'minigameState.progress': 18, 'minigameState.finishTime': Date.now() });
+                    } else {
+                        updateDoc(doc(getPlayersCol(currentRoomId), cpu.id), { 'minigameState.progress': prog });
+                    }
+                });
+            }
+        }
+
+        // ==========================================
+        // MINIGAME 2: REFLEXES (Acchiappa Tutto)
+        // ==========================================
+        class ReflexGame {
+            constructor(container) {
+                this.container = container;
+                this.score = 0;
+                this.timeLeft = 30;
+                this.spawnInterval = null;
+                this.timerInterval = null;
+            }
+            start() {
+                this.container.innerHTML = `
+                    <div class="text-center text-xl font-bold mb-2">Tempo: <span id="ref-time">30</span> | Punti: <span id="ref-score">0</span></div>
+                    <div id="reflex-area"></div>
+                `;
+                this.area = document.getElementById('reflex-area');
+                
+                this.spawnInterval = setInterval(() => this.spawnTarget(), 700);
+                this.timerInterval = setInterval(() => {
+                    this.timeLeft--;
+                    document.getElementById('ref-time').innerText = this.timeLeft;
+                    if(this.timeLeft <= 0) this.endGame();
+                }, 1000);
+                this.syncProgress();
+            }
+            spawnTarget() {
+                const types = [
+                    { c: 'target-normal', p: 1, text: '+1' }, { c: 'target-normal', p: 1, text: '+1' },
+                    { c: 'target-rare', p: 3, text: '+3' },
+                    { c: 'target-trap', p: -2, text: '-2' }
+                ];
+                const t = types[Math.floor(Math.random()*types.length)];
+                const el = document.createElement('div');
+                el.className = `reflex-target ${t.c}`;
+                el.innerText = t.text;
+                
+                const maxX = this.area.clientWidth - 60;
+                const maxY = this.area.clientHeight - 60;
+                el.style.left = Math.max(0, Math.random() * maxX) + 'px';
+                el.style.top = Math.max(0, Math.random() * maxY) + 'px';
+                
+                el.onclick = () => {
+                    this.score += t.p;
+                    document.getElementById('ref-score').innerText = this.score;
+                    el.remove();
+                    this.syncProgress();
+                };
+                
+                this.area.appendChild(el);
+                setTimeout(() => { if(el.parentElement) el.remove(); }, 1500 + Math.random()*1000);
+            }
+            syncProgress() {
+                updateDoc(doc(getPlayersCol(currentRoomId), myId), { 'minigameState.progress': this.score });
+            }
+            endGame() {
+                clearInterval(this.spawnInterval);
+                clearInterval(this.timerInterval);
+                finishCurrentMinigame(this.score);
+            }
+            simulateCPU() {
+                Object.values(playersData).filter(p => p.isCPU && p.status !== 'finished').forEach(cpu => {
+                    let prog = cpu.minigameState?.progress || 0;
+                    if(this.timeLeft > 0) {
+                        prog += Math.floor(Math.random() * 3); // Bot earns 0-2 points per sec
+                        updateDoc(doc(getPlayersCol(currentRoomId), cpu.id), { 'minigameState.progress': prog });
+                    } else {
+                        updateDoc(doc(getPlayersCol(currentRoomId), cpu.id), { status: 'finished', 'minigameState.progress': prog, 'minigameState.finishTime': Date.now() });
+                    }
+                });
+            }
+        }
+
+        // ==========================================
+        // MINIGAME 3: SAFE (Mastermind clone)
+        // ==========================================
+        class SafeGame {
+            constructor(container) {
+                this.container = container;
+                this.round = 1;
+                this.codeLen = 3; // R1: 3, R2: 4, R3: 5
+                this.secret = [];
+                this.currentGuess = [];
+                this.generateSecret();
+            }
+            generateSecret() {
+                this.secret = [];
+                for(let i=0; i<this.codeLen; i++) this.secret.push(Math.floor(Math.random() * 10).toString());
+            }
+            start() {
+                this.render();
+                this.syncProgress();
+            }
+            render() {
+                this.container.innerHTML = `
+                    <div class="text-center font-bold text-xl mb-2 text-yellow-400">ROUND ${this.round}/3 (Codice da ${this.codeLen} cifre)</div>
+                    <div class="flex-1 flex flex-col items-center">
+                        <div id="safe-display" class="bg-black border-4 border-gray-600 rounded p-4 text-3xl font-mono tracking-widest w-full max-w-xs text-center h-16 flex items-center justify-center mb-4">
+                            ${this.currentGuess.join('') || '-'}
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 w-full max-w-xs mb-4">
+                            ${[1,2,3,4,5,6,7,8,9,0].map(n => `<button class="safe-key py-4" onclick="safeInstance.press('${n}')">${n}</button>`).join('')}
+                            <button class="safe-key py-4 bg-red-600 col-span-2" onclick="safeInstance.clear()">CANC</button>
+                        </div>
+                        <div id="safe-history" class="w-full max-w-xs space-y-1 overflow-y-auto h-32 text-sm bg-black/40 p-2 rounded"></div>
+                    </div>
+                `;
+                // Esponiamo l'istanza per gli onclick html
+                window.safeInstance = this;
+            }
+            press(n) {
+                if(this.currentGuess.length < this.codeLen) {
+                    this.currentGuess.push(n);
+                    this.renderPartial();
+                    if(this.currentGuess.length === this.codeLen) setTimeout(() => this.check(), 200);
+                }
+            }
+            clear() {
+                this.currentGuess = [];
+                this.renderPartial();
+            }
+            renderPartial() {
+                document.getElementById('safe-display').innerText = this.currentGuess.join('') || '-';
+            }
+            check() {
+                let greens = 0;
+                let yellows = 0;
+                let secCopy = [...this.secret];
+                let guessCopy = [...this.currentGuess];
+
+                // Check greens
+                for(let i=0; i<this.codeLen; i++){
+                    if(guessCopy[i] === secCopy[i]) { greens++; secCopy[i]=null; guessCopy[i]=null; }
+                }
+                // Check yellows
+                for(let i=0; i<this.codeLen; i++){
+                    if(guessCopy[i] !== null) {
+                        const idx = secCopy.indexOf(guessCopy[i]);
+                        if(idx > -1) { yellows++; secCopy[idx]=null; }
+                    }
+                }
+
+                // Add to history
+                const hist = document.getElementById('safe-history');
+                const row = document.createElement('div');
+                row.className = "flex justify-between items-center bg-gray-800 p-1 px-2 rounded";
+                row.innerHTML = `<span class="font-mono">${this.currentGuess.join('')}</span> 
+                                 <span class="text-green-400 font-bold">${greens}V</span> 
+                                 <span class="text-yellow-400 font-bold">${yellows}G</span>`;
+                hist.prepend(row);
+
+                if(greens === this.codeLen) {
+                    this.round++;
+                    this.syncProgress();
+                    if(this.round > 3) {
+                        finishCurrentMinigame(this.round);
+                    } else {
+                        this.codeLen++;
+                        this.generateSecret();
+                        this.currentGuess = [];
+                        this.render();
+                    }
+                } else {
+                    this.currentGuess = [];
+                    this.renderPartial();
+                }
+            }
+            syncProgress() {
+                updateDoc(doc(getPlayersCol(currentRoomId), myId), { 'minigameState.progress': this.round - 1 });
+            }
+            simulateCPU() {
+                Object.values(playersData).filter(p => p.isCPU && p.status !== 'finished').forEach(cpu => {
+                    let prog = cpu.minigameState?.progress || 0;
+                    if(Math.random() > 0.85) prog += 1; // Bot slowly guesses correct
+                    if(prog >= 3) {
+                        updateDoc(doc(getPlayersCol(currentRoomId), cpu.id), { status: 'finished', 'minigameState.progress': 3, 'minigameState.finishTime': Date.now() });
+                    } else {
+                        updateDoc(doc(getPlayersCol(currentRoomId), cpu.id), { 'minigameState.progress': prog });
+                    }
+                });
+            }
+        }
+
+
+        // --- FINAL RESULTS ---
+        const showFinalResults = () => {
+            showScreen('screen-results');
+            const list = document.getElementById('final-standings');
+            list.innerHTML = '';
+            
+            const pArray = Object.values(playersData).sort((a,b) => b.score - a.score);
+            
+            pArray.forEach((p, idx) => {
+                const char = ROSTER.find(c => c.id === p.charId);
+                const isMe = p.id === myId;
+                
+                // Suspense animation helper
+                const el = document.createElement('li');
+                el.className = `flex items-center gap-4 bg-gray-800 p-4 rounded-xl border-2 ${isMe ? 'border-yellow-400 bg-gray-700' : 'border-gray-600'} opacity-0 translate-y-4 transition-all duration-1000 transform`;
+                
+                let medal = idx === 0 ? '🏆' : (idx===1 ? '🥈' : (idx===2 ? '🥉' : ''));
+                
+                el.innerHTML = `
+                    <div class="text-3xl font-bold w-10 text-center">${idx+1}°</div>
+                    <img src="${char?.i}" class="w-16 h-16 rounded-full object-cover border-2 border-white">
+                    <div class="flex-1 text-2xl font-bold ${isMe?'text-yellow-400':''}">${p.name} ${medal}</div>
+                    <div class="text-3xl font-bold text-green-400">${p.score} pt</div>
+                `;
+                list.appendChild(el);
+                
+                // Animazione dal basso (dall'ultimo al primo)
+                setTimeout(() => {
+                    el.classList.remove('opacity-0', 'translate-y-4');
+                }, (pArray.length - idx) * 1000); 
+            });
+        };
+
+    </script>
+</body>
+</html>
