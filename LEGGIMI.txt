@@ -1,0 +1,15 @@
+CAOS CLUB — CORREZIONE ERRORE JAVASCRIPT
+
+Questa versione corregge il rendering di Battle Royale e forza il browser a scaricare il nuovo app.js.
+
+COME AGGIORNARE
+1. Estrai lo ZIP sul computer.
+2. Apri il repository GitHub del gioco.
+3. Premi Add file -> Upload files.
+4. Trascina i file contenuti qui dentro direttamente nella pagina (non la cartella contenitore).
+5. Conferma Commit changes e attendi la pubblicazione.
+
+IMPORTANTE: sostituisci almeno index.html e app.js. Il pacchetto include anche style.css e firestore.rules coerenti.
+Dopo la pubblicazione apri il sito e premi Ctrl+Shift+R.
+
+Non serve cambiare di nuovo le Rules soltanto per l'errore "Missing } in template expression": quello è un errore JavaScript.
