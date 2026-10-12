@@ -1,0 +1,11 @@
+// Esempio iniziale NON pronto per produzione.
+// Non pubblicare una stanza con queste regole permissive senza aggiungere Authentication
+// e validazione server-side: altrimenti un client può falsificare punteggi o giocatori.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /rooms/{roomId} {
+      allow read, write: if true;
+    }
+  }
+}
