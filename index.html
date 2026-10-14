@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#17142e">
+  <title>Caos Club — Party Game</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Caos Club"><span class="brand-mark">✦</span><span>CAOS<span class="brand-accent"> CLUB</span></span></a>
+    <div class="topbar-right"><span class="online-dot"></span><span id="connectionLabel">Modalità offline</span></div>
+  </header>
+  <main id="app" class="app-shell">
+    <section id="screen-home" class="screen active">
+      <div class="hero">
+        <div class="eyebrow"><span>✦</span> IL TUO PARTY GAME ONLINE</div>
+        <h1>Benvenuto<br><span>nel caos.</span></h1>
+        <p class="hero-copy">Sfida gli amici, affronta minigiochi imprevedibili e conquista la vetta del torneo.</p>
+        <div class="home-panel">
+          <label for="playerName">COME TI CHIAMI?</label>
+          <input id="playerName" maxlength="16" autocomplete="nickname" placeholder="Scrivi il tuo nome..." />
+          <button id="enterBtn" class="btn btn-primary btn-wide">ENTRA NEL CLUB <span>→</span></button>
+          <p class="microcopy">Una stanza, un codice, infinite possibilità.</p>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+        <div class="float-card float-card-one"><span>🏆</span><b>TORNEO</b><small>La gloria ti aspetta</small></div>
+        <div class="float-card float-card-two"><span>🎲</span><b>MINIGIOCHI</b><small>Fortuna e riflessi</small></div>
+        <div class="hero-token token-one">😈</div><div class="hero-token token-two">⭐</div><div class="hero-token token-three">🎮</div>
+        <div class="hero-spark spark-one">✦</div><div class="hero-spark spark-two">✧</div>
+      </div>
+    </section>
+
+    <section id="screen-menu" class="screen">
+      <div class="section-heading"><div class="eyebrow">CIAO, <span id="welcomeName">GIOCATORE</span></div><h2>Che cosa facciamo<br><span>oggi?</span></h2><p>Scegli come entrare nel torneo.</p></div>
+      <div class="menu-cards">
+        <button class="menu-card create-card" id="openCreate"><span class="card-icon">＋</span><span class="card-title">Crea una stanza</span><span class="card-description">Diventa host e configura il tuo torneo.</span><span class="card-arrow">↗</span></button>
+        <button class="menu-card join-card" id="openJoin"><span class="card-icon">⌁</span><span class="card-title">Unisciti con codice</span><span class="card-description">Hai ricevuto un codice? Entra qui.</span><span class="card-arrow">↗</span></button>
+        <button class="menu-card lobby-card" id="openLobbies"><span class="card-icon">◎</span><span class="card-title">Lobby in attesa</span><span class="card-description">Trova una stanza pubblica pronta a partire.</span><span class="card-arrow">↗</span></button>
+      </div>
+      <button class="text-button" id="backHome">← Cambia nome</button>
+    </section>
+
+    <section id="screen-create" class="screen">
+      <button class="text-button back-menu">← Menu principale</button>
+      <div class="section-heading"><div class="eyebrow">CONFIGURA IL TORNEO</div><h2>Le regole le<br><span>decidi tu.</span></h2><p>Per ora è disponibile la modalità Torneo.</p></div>
+      <div class="settings-panel">
+        <div class="setting-row"><div><b>Modalità</b><small>Accumula punti in ogni minigioco.</small></div><div class="mode-chip">🏆 Torneo <span>DISPONIBILE</span></div></div>
+        <div class="setting-row"><div><b>Giocatori totali</b><small>Da 3 a 10, contando anche te.</small></div><div class="stepper"><button id="playersMinus" aria-label="Diminuisci giocatori">−</button><strong id="playersValue">4</strong><button id="playersPlus" aria-label="Aumenta giocatori">＋</button></div></div>
+        <div class="setting-row"><div><b>Minigiochi</b><small>Quanti round vuoi giocare?</small></div><div class="stepper"><button id="gamesMinus" aria-label="Diminuisci minigiochi">−</button><strong id="gamesValue">7</strong><button id="gamesPlus" aria-label="Aumenta minigiochi">＋</button></div></div>
+        <div class="setting-row"><div><b>Tipo di lobby</b><small>Le lobby pubbliche appaiono nell'elenco.</small></div><label class="toggle"><input type="checkbox" id="publicLobby" checked><span></span><em id="lobbyTypeLabel">Pubblica</em></label></div>
+        <button id="createRoomBtn" class="btn btn-primary btn-wide">CREA LA STANZA <span>→</span></button>
+      </div>
+    </section>
+
+    <section id="screen-join" class="screen">
+      <button class="text-button back-menu">← Menu principale</button>
+      <div class="section-heading"><div class="eyebrow">ENTRA NEL TORNEO</div><h2>Hai un <span>codice?</span></h2><p>Chiedilo all'host e scrivilo qui sotto.</p></div>
+      <div class="home-panel join-panel"><label for="roomCode">CODICE STANZA</label><input id="roomCode" maxlength="6" placeholder="ES. A7K9Q2" class="code-input"><button id="joinCodeBtn" class="btn btn-primary btn-wide">UNISCITI <span>→</span></button></div>
+    </section>
+
+    <section id="screen-lobbies" class="screen">
+      <button class="text-button back-menu">← Menu principale</button>
+      <div class="section-heading"><div class="eyebrow">TROVA IL TUO GRUPPO</div><h2>Lobby in <span>attesa.</span></h2><p>Entra in una stanza pubblica non ancora iniziata.</p></div>
+      <div id="lobbyList" class="lobby-list"><div class="empty-state">Cerco le lobby disponibili…</div></div>
+      <button id="refreshLobbies" class="btn btn-secondary">↻ Aggiorna elenco</button>
+    </section>
+
+    <section id="screen-room" class="screen">
+      <div class="room-top"><button id="leaveRoom" class="text-button">← Esci dalla stanza</button><div class="room-code-pill">CODICE <b id="roomCodeDisplay">------</b><button id="copyCode" title="Copia codice">▣</button></div></div>
+      <div class="section-heading room-heading"><div class="eyebrow"><span class="live-pulse"></span> LOBBY TORNEO</div><h2 id="roomTitle">La squadra si<br><span>riunisce.</span></h2><p id="roomSub">Aspettando gli altri giocatori…</p></div>
+      <div class="room-layout"><div class="players-panel"><div class="panel-heading"><b>GIOCATORI</b><span id="playerCount">1 / 4</span></div><div id="roomPlayers" class="room-players"></div></div>
+        <aside class="room-info"><div class="info-icon">🏆</div><b>TORNEO</b><div class="info-line"><span>Minigiochi</span><strong id="roomGames">7</strong></div><div class="info-line"><span>Giocatori richiesti</span><strong id="roomMaxPlayers">4</strong></div><div class="info-line"><span>NPC</span><strong id="roomNpcCount">3</strong></div><p id="roomHostNote">Solo l'host può iniziare la partita.</p><button id="startGameBtn" class="btn btn-primary btn-wide">INIZIA PARTITA <span>→</span></button><small id="startHint">Puoi iniziare anche da solo.</small></aside>
+      </div>
+    </section>
+
+    <section id="screen-character" class="screen">
+      <div class="character-header"><div><div class="eyebrow">ROUND 0 · PREPARAZIONE</div><h2>Scegli il tuo <span>personaggio.</span></h2><p>Hai 90 secondi. Ogni personaggio può essere scelto da un solo giocatore.</p></div><div class="timer-card"><span>⏱</span><strong id="characterTimer">90</strong><small>SECONDI</small></div></div>
+      <div class="character-tools"><input id="characterSearch" placeholder="⌕  Cerca un personaggio..." /><span id="characterCount">0 personaggi</span></div>
+      <div id="characterGrid" class="character-grid"></div>
+      <div class="character-footer"><div id="characterSelectionLabel">Nessun personaggio selezionato</div><button id="confirmCharacter" class="btn btn-primary" disabled>CONFERMA SCELTA ✓</button></div>
+    </section>
+
+    <section id="screen-game" class="screen">
+      <div class="game-topbar"><div><div class="eyebrow" id="gameRoundLabel">ROUND 1 / 7</div><h2 id="gameTitle">Memory</h2></div><div class="game-points"><small>I TUOI PUNTI</small><strong id="myPoints">0</strong></div></div>
+      <div id="gameDescription" class="game-description"></div>
+      <div class="game-layout"><div id="gameMain" class="game-main"></div><aside class="game-sidebar"><div class="panel-heading"><b>CLASSIFICA LIVE</b><span>★</span></div><div id="liveStandings"></div><div class="sidebar-note">I punti del torneo si aggiornano alla fine di ogni minigioco.</div></aside></div>
+      <div id="gameFooter" class="game-footer"></div>
+    </section>
+
+    <section id="screen-results" class="screen">
+      <div class="results-hero"><div class="eyebrow">TORNEO COMPLETATO</div><div class="trophy-big">🏆</div><h2 id="winnerTitle">Abbiamo un vincitore!</h2><p>Il caos ha parlato. Ecco la classifica finale.</p></div>
+      <div id="finalStandings" class="final-standings"></div>
+      <button id="returnMenu" class="btn btn-primary btn-wide">TORNA AL MENU</button>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
