@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Party Tournament</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+
+        h1, h2, h3, .title-font {
+            font-family: 'Fredoka One', cursive;
+            text-shadow: 2px 2px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 1px 1px 0px #000;
+            letter-spacing: 1px;
+        }
+
+        /* Glassmorphism panels */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* Bubbly Buttons */
+        .btn-bubbly {
+            display: inline-block;
+            font-family: 'Fredoka One', cursive;
+            padding: 12px 24px;
+            font-size: 1.2rem;
+            color: white;
+            background: linear-gradient(to bottom, #ef4444, #b91c1c);
+            border: 4px solid #7f1d1d;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: transform 0.1s, filter 0.1s;
+            box-shadow: 0 6px 0 #7f1d1d, 0 10px 10px rgba(0,0,0,0.3);
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.5);
+        }
+        .btn-bubbly:hover { filter: brightness(1.1); }
+        .btn-bubbly:active {
+            transform: translateY(6px);
+            box-shadow: 0 0px 0 #7f1d1d, 0 2px 2px rgba(0,0,0,0.3);
+        }
+        .btn-bubbly.blue { background: linear-gradient(to bottom, #3b82f6, #1d4ed8); border-color: #1e3a8a; box-shadow: 0 6px 0 #1e3a8a, 0 10px 10px rgba(0,0,0,0.3); }
+        .btn-bubbly.green { background: linear-gradient(to bottom, #22c55e, #15803d); border-color: #14532d; box-shadow: 0 6px 0 #14532d, 0 10px 10px rgba(0,0,0,0.3); }
+
+        /* Character Select Grid */
+        .char-card { transition: all 0.2s; border: 4px solid transparent; cursor: pointer; }
+        .char-card:hover { transform: scale(1.05); }
+        .char-card.selected { border-color: #fde047; box-shadow: 0 0 15px #fde047; transform: scale(1.1); z-index: 10; }
+        .char-card.taken { opacity: 0.5; filter: grayscale(100%); cursor: not-allowed; }
+
+        /* Generic Minigame Styles */
+        .game-container { display: none; width: 100%; height: 100%; position: absolute; top:0; left:0; background: rgba(0,0,0,0.8); z-index: 50; flex-direction: column; align-items: center; justify-content: center; }
+        .screen-active { display: flex !important; }
+
+        /* Memory Game */
+        .memory-card { transform-style: preserve-3d; transition: transform 0.5s; }
+        .memory-card.flipped { transform: rotateY(180deg); }
+        .memory-front, .memory-back { backface-visibility: hidden; position: absolute; top:0; left:0; width: 100%; height: 100%; border-radius: 8px; }
+        .memory-front { background: #3b82f6; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: white; border: 2px solid #1e3a8a; }
+        .memory-back { background: white; transform: rotateY(180deg); display: flex; align-items: center; justify-content: center; border: 2px solid #ccc; overflow: hidden;}
+        .memory-back img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .mini-grid-cell { width: 10px; height: 10px; background: gray; margin: 1px; }
+        .mini-grid-cell.solved { background: #22c55e; }
+
+        /* Red Light Green Light */
+        .mash-bar-container { width: 80%; height: 40px; background: #333; border-radius: 20px; border: 3px solid white; overflow: hidden; margin-bottom: 20px; }
+        .mash-bar { height: 100%; background: linear-gradient(90deg, #fde047, #f59e0b); width: 0%; transition: width 0.1s; }
+        .traffic-light { width: 100px; height: 100px; border-radius: 50%; border: 5px solid white; margin-bottom: 20px; transition: background 0.3s;}
+        .light-red { background: #ef4444; box-shadow: 0 0 30px #ef4444; }
+        .light-green { background: #22c55e; box-shadow: 0 0 30px #22c55e; }
+
+        /* Hide and Seek */
+        .hide-obj { width: 80px; height: 80px; background: #8b5cf6; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; border: 3px solid white; font-size: 2rem;}
+        .hide-obj:hover { transform: scale(1.1); }
+        .hide-obj.selected { border-color: #fde047; box-shadow: 0 0 15px #fde047; }
+        .hide-obj.searched { background: #4c1d95; opacity: 0.8; }
+
+        /* Goose Game */
+        .goose-board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; width: 95%; max-width: 600px; }
+        .goose-cell { aspect-ratio: 1; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; position: relative; font-size: 0.8rem;}
+        .goose-token { width: 20px; height: 20px; border-radius: 50%; position: absolute; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 10; background-size: cover; background-position: center;}
+        
+        /* Pig Racing */
+        .pig-track { width: 100%; height: 40px; background: rgba(0,0,0,0.5); border-radius: 20px; position: relative; margin-bottom: 10px; border: 2px solid white;}
+        .pig-avatar { width: 40px; height: 40px; border-radius: 50%; position: absolute; top: -2px; left: 0; border: 3px solid white; transition: left 0.5s ease-out; background-size: cover; background-position: center;}
+
+        /* Fortunflipper */
+        .flipper-board { width: 300px; height: 400px; background: #1e293b; border: 4px solid #334155; position: relative; overflow: hidden; border-radius: 10px;}
+        .flipper-ball { width: 24px; height: 24px; border-radius: 50%; position: absolute; border: 2px solid white; transition: top 0.1s, left 0.1s; z-index: 10; background-size: cover;}
+        .flipper-peg { width: 10px; height: 10px; background: #cbd5e1; border-radius: 50%; position: absolute; }
+        .stuck-overlay { position: absolute; top:0;left:0;width:100%;height:100%; background: rgba(239, 68, 68, 0.8); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 20;}
+
+        /* Hot Potato */
+        .potato-bomb { width: 100px; height: 100px; background: #111; border-radius: 50%; position: relative; animation: pulse 0.5s infinite alternate; margin: 20px;}
+        .potato-bomb::after { content: ''; position: absolute; top: -10px; right: 20px; width: 20px; height: 20px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 20px #ef4444; }
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+
+        /* Utils */
+        .hidden { display: none !important; }
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center p-4">
+
+    <div id="toast-container"></div>
+
+    <!-- MAIN MENU -->
+    <div id="screen-menu" class="glass-panel w-full max-w-md p-8 flex flex-col items-center gap-6 screen-active text-center">
+        <h1 class="text-5xl text-yellow-300 mb-4">PARTY<br>TOURNAMENT</h1>
+        
+        <div class="w-full">
+            <label class="block text-sm font-bold mb-2">Il tuo Nome</label>
+            <input type="text" id="player-name" class="w-full p-3 rounded-lg text-black font-bold text-center text-xl outline-none border-4 border-transparent focus:border-yellow-400" placeholder="Inserisci nome..." maxlength="12">
+        </div>
+
+        <div class="flex flex-col w-full gap-4 mt-4">
+            <button class="btn-bubbly w-full" onclick="ui.showCreateRoom()">Crea Stanza (Host)</button>
+            <button class="btn-bubbly blue w-full" onclick="ui.showJoinRoom()">Unisciti a Stanza</button>
+        </div>
+    </div>
+
+    <!-- CREATE ROOM OPTIONS -->
+    <div id="screen-create" class="glass-panel w-full max-w-md p-8 flex flex-col items-center gap-6 hidden text-center">
+        <h2 class="text-3xl text-yellow-300">Impostazioni Torneo</h2>
+        
+        <div class="w-full flex justify-between items-center bg-black/20 p-4 rounded-lg">
+            <span class="font-bold">Giocatori (Umani + Bot)</span>
+            <div class="flex items-center gap-2">
+                <button class="bg-blue-600 px-3 py-1 rounded" onclick="settings.modPlayers(-1)">-</button>
+                <span id="set-players" class="text-xl font-bold w-6">4</span>
+                <button class="bg-blue-600 px-3 py-1 rounded" onclick="settings.modPlayers(1)">+</button>
+            </div>
+        </div>
+
+        <div class="w-full flex justify-between items-center bg-black/20 p-4 rounded-lg">
+            <span class="font-bold">Numero Minigiochi</span>
+            <div class="flex items-center gap-2">
+                <button class="bg-blue-600 px-3 py-1 rounded" onclick="settings.modGames(-1)">-</button>
+                <span id="set-games" class="text-xl font-bold w-6">3</span>
+                <button class="bg-blue-600 px-3 py-1 rounded" onclick="settings.modGames(1)">+</button>
+            </div>
+        </div>
+
+        <div class="flex gap-4 w-full">
+            <button class="btn-bubbly blue flex-1" onclick="ui.showMenu()">Indietro</button>
+            <button class="btn-bubbly green flex-1" onclick="network.createRoom()">Crea</button>
+        </div>
+    </div>
+
+    <!-- JOIN ROOM -->
+    <div id="screen-join" class="glass-panel w-full max-w-md p-8 flex flex-col items-center gap-6 hidden text-center">
+        <h2 class="text-3xl text-yellow-300">Unisciti</h2>
+        <input type="text" id="room-code-input" class="w-full p-3 rounded-lg text-black font-bold text-center text-3xl outline-none uppercase" placeholder="CODICE" maxlength="4">
+        <div class="flex gap-4 w-full mt-4">
+            <button class="btn-bubbly blue flex-1" onclick="ui.showMenu()">Indietro</button>
+            <button class="btn-bubbly green flex-1" onclick="network.joinRoom()">Entra</button>
+        </div>
+    </div>
+
+    <!-- LOBBY -->
+    <div id="screen-lobby" class="glass-panel w-full max-w-2xl p-8 flex flex-col items-center gap-6 hidden">
+        <div class="text-center">
+            <h2 class="text-4xl text-yellow-300">Lobby</h2>
+            <p class="text-xl mt-2">Codice Stanza: <span id="lobby-code" class="font-bold bg-white text-black px-3 py-1 rounded tracking-widest uppercase">----</span></p>
+        </div>
+
+        <div id="lobby-players" class="flex flex-wrap justify-center gap-4 w-full my-4">
+            <!-- Player slots injected here -->
+        </div>
+
+        <div class="w-full text-center text-sm text-gray-300 mb-4" id="lobby-status">In attesa di giocatori...</div>
+
+        <div class="flex gap-4 w-full justify-center">
+            <button class="btn-bubbly blue" onclick="network.leaveRoom()">Esci</button>
+            <button id="btn-start-game" class="btn-bubbly green hidden" onclick="network.hostStartGame()">Inizia Partita!</button>
+        </div>
+    </div>
+
+    <!-- CHARACTER SELECT -->
+    <div id="screen-char-select" class="w-full max-w-6xl h-[90vh] bg-black/50 backdrop-blur-md rounded-2xl p-4 flex flex-col items-center hidden relative overflow-hidden">
+        <h2 class="text-3xl text-yellow-300 mb-2 title-font">Scegli Personaggio</h2>
+        <div class="text-xl mb-4 font-bold" id="char-timer">Tempo: 90</div>
+        
+        <div id="char-grid" class="flex-1 w-full overflow-y-auto grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 p-2 content-start pb-20">
+            <!-- Characters injected here -->
+        </div>
+
+        <div class="absolute bottom-4 left-0 w-full flex justify-center px-4">
+            <div class="glass-panel px-6 py-3 flex items-center justify-between w-full max-w-md">
+                <div class="flex items-center gap-3">
+                    <div id="my-selected-char-img" class="w-12 h-12 rounded-full bg-gray-500 border-2 border-white bg-cover bg-center"></div>
+                    <span id="my-selected-char-name" class="font-bold text-lg">Nessuno</span>
+                </div>
+                <button id="btn-lock-char" class="btn-bubbly green text-sm py-2 px-4" onclick="gameLogic.lockCharacter()" disabled>Conferma</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- INTERMISSION / SCOREBOARD -->
+    <div id="screen-scoreboard" class="glass-panel w-full max-w-2xl p-8 flex flex-col items-center gap-6 hidden">
+        <h2 id="score-title" class="text-4xl text-yellow-300 title-font">Classifica</h2>
+        <h3 id="score-round" class="text-xl font-bold">Round 1 / 3</h3>
+        
+        <div id="score-list" class="w-full flex flex-col gap-2 mt-4 max-h-[50vh] overflow-y-auto pr-2">
+            <!-- Scores injected here -->
+        </div>
+
+        <div id="score-host-controls" class="mt-6 hidden">
+            <button class="btn-bubbly green" onclick="network.hostNextRound()">Prossimo Minigioco</button>
+        </div>
+        <div id="score-wait-msg" class="mt-6 text-gray-300">In attesa dell'Host...</div>
+    </div>
+
+    <!-- MINIGAME CONTAINERS -->
+    
+    <!-- 1. Memory Game -->
+    <div id="game-memory" class="game-container">
+        <h2 class="text-3xl text-yellow-300 title-font mb-4">Memory</h2>
+        <div class="flex gap-8 items-start">
+            <div id="memory-grid" class="grid grid-cols-6 gap-2 bg-white/10 p-4 rounded-xl">
+                <!-- Cards injected here -->
+            </div>
+            <div class="flex flex-col gap-4 bg-black/40 p-4 rounded-xl max-h-[60vh] overflow-y-auto">
+                <h3 class="font-bold text-center">Avversari</h3>
+                <div id="memory-opponents" class="flex flex-col gap-4">
+                    <!-- Opponent mini grids -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Hide and Seek -->
+    <div id="game-hide" class="game-container">
+        <h2 class="text-4xl text-yellow-300 title-font mb-2">Nascondino</h2>
+        <p id="hide-status" class="text-xl mb-6 font-bold">Turno di: ---</p>
+        <div id="hide-timer" class="text-3xl font-bold text-red-400 mb-6 hidden">15</div>
+        
+        <div class="grid grid-cols-4 gap-6 mb-8" id="hide-objects">
+            <div class="hide-obj" onclick="minigames.hide.clickObj(0)">🌳</div>
+            <div class="hide-obj" onclick="minigames.hide.clickObj(1)">🪨</div>
+            <div class="hide-obj" onclick="minigames.hide.clickObj(2)">🚗</div>
+            <div class="hide-obj" onclick="minigames.hide.clickObj(3)">🏠</div>
+            <div class="hide-obj" onclick="minigames.hide.clickObj(4)">⛺</div>
+            <div class="hide-obj" onclick="minigames.hide.clickObj(5)">🗑️</div>
+            <div class="hide-obj" onclick="minigames.hide.clickObj(6)">⛲</div>
+            <div class="hide-obj" onclick="minigames.hide.clickObj(7)">🗿</div>
+        </div>
+        <button id="btn-hide-action" class="btn-bubbly green hidden" onclick="minigames.hide.confirmAction()">Conferma Nascondiglio</button>
+        <div id="hide-reveal" class="w-full max-w-lg flex flex-wrap justify-center gap-2 mt-4 min-h-[50px]"></div>
+    </div>
+
+    <!-- 3. Fortunflipper -->
+    <div id="game-flipper" class="game-container">
+        <h2 class="text-3xl text-yellow-300 title-font mb-4">Fortunflipper</h2>
+        <p class="mb-4">Doppio click su una pallina per entrare. Se ti incastri, clicca 10 volte lo schermo!</p>
+        
+        <div id="flipper-selector" class="flex gap-4 mb-4">
+            <!-- Balls to pick -->
+        </div>
+
+        <div id="flipper-board" class="flipper-board relative hidden">
+            <!-- Pegs and Balls injected here by logic -->
+            <div id="flipper-stuck-overlay" class="stuck-overlay" onclick="minigames.flipper.clickUnstick()">
+                <h1 class="text-5xl font-bold title-font text-white mb-4">INCASTRATO!</h1>
+                <p class="text-2xl mb-4">Clicca velocemente!</p>
+                <div class="w-64 h-8 bg-black border-2 border-white rounded-full overflow-hidden">
+                    <div id="flipper-stuck-bar" class="h-full bg-yellow-400 w-0"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="flipper-finish" class="mt-4 bg-white/20 p-2 rounded w-full max-w-md text-center hidden">
+            <h3 class="font-bold border-b mb-2">Arrivi</h3>
+            <div id="flipper-rankings" class="flex flex-col gap-1 text-sm"></div>
+        </div>
+    </div>
+
+    <!-- 4. Gioco dell'Oca -->
+    <div id="game-goose" class="game-container">
+        <h2 class="text-3xl text-yellow-300 title-font mb-2">Gioco dell'Oca</h2>
+        <div class="flex justify-between w-full max-w-4xl mb-2 px-4 items-center">
+            <p id="goose-status" class="text-xl font-bold bg-black/50 px-4 py-2 rounded-lg">In attesa...</p>
+            <button id="btn-goose-roll" class="btn-bubbly green hidden" onclick="minigames.goose.rollDice()">Lancia Dadi 🎲</button>
+        </div>
+        
+        <div class="relative w-full max-w-4xl h-[60vh] bg-[#22c55e] border-8 border-[#166534] rounded-2xl p-2 overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
+            <div id="goose-board" class="goose-board w-full h-full">
+                <!-- Cells injected via JS to handle different screen sizes dynamically -->
+            </div>
+            <!-- Tokens injected absolutely inside board -->
+            <div id="goose-tokens" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
+        </div>
+        
+        <div id="goose-logs" class="w-full max-w-4xl h-20 bg-black/40 mt-4 rounded-lg p-2 overflow-y-auto text-sm font-mono"></div>
+    </div>
+
+    <!-- 5. Clicca il Bottone (Red Light Green Light) -->
+    <div id="game-mash" class="game-container">
+        <h2 class="text-4xl text-yellow-300 title-font mb-8">Spacca il Bottone!</h2>
+        
+        <div id="mash-light" class="traffic-light light-red"></div>
+        
+        <div class="w-full max-w-md flex flex-col items-center">
+            <div class="w-full flex justify-between mb-1 px-2 font-bold">
+                <span>Progresso</span>
+                <span id="mash-pct">0%</span>
+            </div>
+            <div class="mash-bar-container">
+                <div id="mash-bar" class="mash-bar"></div>
+            </div>
+            
+            <button id="btn-mash" class="w-48 h-48 rounded-full bg-red-600 border-8 border-red-800 shadow-[0_15px_0_#7f1d1d,0_20px_20px_rgba(0,0,0,0.5)] active:translate-y-[10px] active:shadow-[0_5px_0_#7f1d1d,0_10px_10px_rgba(0,0,0,0.5)] transition-all font-bold title-font text-3xl text-white outline-none select-none" onmousedown="minigames.mash.clickBtn()" ontouchstart="minigames.mash.clickBtn(); event.preventDefault();">CLICCA!</button>
+        </div>
+
+        <div class="absolute right-4 top-1/4 w-64 bg-black/50 p-4 rounded-xl flex flex-col gap-2">
+            <h3 class="font-bold border-b border-gray-500 pb-1">Avversari</h3>
+            <div id="mash-opponents"></div>
+        </div>
+    </div>
+
+    <!-- 6. Scommessa dei Maiali -->
+    <div id="game-pigs" class="game-container">
+        <h2 class="text-4xl text-yellow-300 title-font mb-2">Corsa dei Maiali</h2>
+        <p class="mb-4" id="pigs-instruction">Scegli il tuo campione!</p>
+        
+        <div id="pigs-selector" class="flex flex-wrap justify-center gap-4 mb-8 w-full max-w-3xl">
+            <!-- Pig buttons -->
+        </div>
+
+        <div id="pigs-track-container" class="w-full max-w-4xl bg-green-800 p-4 rounded-xl border-4 border-green-900 hidden flex-col gap-2">
+            <!-- Tracks -->
+        </div>
+        
+        <div id="pigs-card" class="mt-6 w-32 h-48 bg-white rounded-xl border-4 border-gray-300 hidden items-center justify-center text-6xl shadow-2xl transition-transform duration-300">
+            <!-- Card drawn -->
+        </div>
+    </div>
+
+    <!-- 7. Custom: Patata Bollente (Hot Potato) -->
+    <div id="game-potato" class="game-container">
+        <h2 class="text-4xl text-yellow-300 title-font mb-4">Patata Bollente</h2>
+        <p class="mb-8 text-xl">Passa la bomba prima che esploda!</p>
+        
+        <div class="relative w-full max-w-2xl h-[50vh] flex items-center justify-center">
+            <!-- Circular layout of players -->
+            <div id="potato-players" class="absolute w-full h-full"></div>
+            
+            <div id="potato-bomb" class="potato-bomb hidden z-10 flex items-center justify-center text-4xl shadow-[0_0_30px_#ef4444]">
+                💣
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Costanti globali di Firebase
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'mario-party-clone';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyBrXTAOKGL0X76GBQ8Sdj4sBcYiEoKdhB0", // Dal prompt utente
+            authDomain: "mario-party-style-game.firebaseapp.com",
+            projectId: "mario-party-style-game",
+            storageBucket: "mario-party-style-game.firebasestorage.app",
+            messagingSenderId: "443206292657",
+            appId: "1:443206292657:web:ab633567201a700da4be90"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Lista Personaggi fornite dall'utente
+        const CHARACTERS = [
+            { name: "Felix", url: "https://i.pinimg.com/736x/7b/1b/67/7b1b674b9591d6ef5c271d40d4b4a8eb.jpg" },
+            { name: "Marinette", url: "https://i.pinimg.com/736x/a9/f2/26/a9f22656f3d386215b3689a43dc35fe3.jpg" },
+            { name: "Cerise", url: "https://i.pinimg.com/736x/f4/f4/3f/f4f43fc683aa514130d907d5e4f66cf9.jpg" },
+            { name: "Nathaniel", url: "https://i.pinimg.com/736x/ca/bb/e5/cabbe5388f56dd707467d6c4f26a2dbe.jpg" },
+            { name: "Jake", url: "https://i.pinimg.com/736x/a7/b2/b8/a7b2b82b160fbf07fc758b14697047ae.jpg" },
+            { name: "Anastasia", url: "https://i.pinimg.com/736x/bc/29/fe/bc29fe78e9dbd6278696ecbf90ef3e36.jpg" },
+            { name: "Fiore", url: "https://i.pinimg.com/736x/0a/1c/86/0a1c863f3fd688c8cade6b87d2d9907b.jpg" },
+            { name: "Ted", url: "https://i.pinimg.com/736x/4f/f5/c3/4ff5c3d946bb0e7f2b4b8e1cf7f46507.jpg" },
+            { name: "Nick Wilde", url: "https://i.pinimg.com/736x/64/53/c5/6453c57f9d9ca10e626926078492b631.jpg" },
+            { name: "Judy", url: "https://i.pinimg.com/736x/78/c9/d2/78c9d20b45d80309421e196d25965f4f.jpg" },
+            { name: "Max", url: "https://i.pinimg.com/736x/bf/f8/82/bff88258d9df8ad6e6ffc277213077ce.jpg" },
+            { name: "Chloe", url: "https://i.pinimg.com/736x/7b/1d/20/7b1d20ee78e95a85d28589ad4d966131.jpg" },
+            { name: "Warren", url: "https://i.pinimg.com/736x/e0/92/4e/e0924ea176fed53f2ed580f3d7b06668.jpg" },
+            { name: "Mark", url: "https://i.pinimg.com/736x/2e/2b/6b/2e2b6b45474d417ee2d2c35c476ce1da.jpg" },
+            { name: "Gwen", url: "https://i.pinimg.com/736x/e0/54/7a/e0547ad6b71dedf0cbacbcfccfdefcc3.jpg" },
+            { name: "Heather", url: "https://i.pinimg.com/736x/d8/0d/77/d80d7744fabe48399c317c444b6456e4.jpg" },
+            { name: "Tyler", url: "https://i.pinimg.com/736x/d2/db/de/d2dbdec62cb66e5de70dd5ef0bf09b46.jpg" },
+            { name: "Duncan", url: "https://i.pinimg.com/736x/d5/79/e0/d579e0e3c51ec7d58cad7ef4f27e8722.jpg" },
+            { name: "Finn", url: "https://i.pinimg.com/1200x/8c/26/de/8c26de758b55ec626323f5332b481a28.jpg" },
+            { name: "Marceline", url: "https://i.pinimg.com/736x/9b/72/f5/9b72f518c67f3ed9baa8d09031f96031.jpg" },
+            { name: "Re Ghiaccio", url: "https://i.pinimg.com/736x/eb/e0/5d/ebe05d99d3bc4405a060466e549307be.jpg" },
+            { name: "Fiona", url: "https://i.pinimg.com/1200x/e5/cc/b6/e5ccb6ee8d9bf83492de9087f18e914a.jpg" },
+            { name: "Lapis", url: "https://i.pinimg.com/736x/4e/a1/ed/4ea1ed5f3187b518bb84a92bbbcce258.jpg" },
+            { name: "Perla Gialla", url: "https://i.pinimg.com/736x/4a/98/18/4a98187cb864ce0097f5809989f605d6.jpg" },
+            { name: "Steven", url: "https://i.pinimg.com/736x/af/87/40/af87404a1c6470b497b9127dea8f2eb4.jpg" },
+            { name: "Cipollo", url: "https://i.pinimg.com/736x/18/f0/e5/18f0e5e8316190a12e76bd7e47a91a17.jpg" },
+            { name: "Ash", url: "https://i.pinimg.com/736x/81/63/94/816394a06b8c3a129155a4dd182fe79b.jpg" },
+            { name: "Serena", url: "https://i.pinimg.com/736x/43/b7/da/43b7da217836207637b84a8f4c3ff90c.jpg" },
+            { name: "Lucinda", url: "https://i.pinimg.com/736x/1e/88/a9/1e88a9ca4bcba979935fc9fffbd8e5f6.jpg" },
+            { name: "James", url: "https://i.pinimg.com/736x/0e/97/5c/0e975c2f1e55e35fdaf04bcad2c88b1f.jpg" },
+            { name: "Fred", url: "https://i.pinimg.com/736x/a7/fc/5f/a7fc5f4b526c4789267408129d6c8162.jpg" },
+            { name: "Daphne", url: "https://i.pinimg.com/736x/af/50/06/af500672188eb9ef9141137045c565f5.jpg" },
+            { name: "Velma", url: "https://i.pinimg.com/736x/2e/1e/95/2e1e953bb0b8a89d1574c0b221cd39b1.jpg" },
+            { name: "Shaggy", url: "https://i.pinimg.com/1200x/0e/46/70/0e46703bcf03ff84420b0b71474c9ed7.jpg" },
+            { name: "Nightwing", url: "https://i.pinimg.com/736x/af/0e/f8/af0ef8fbf1db3dc993412fd3541441a5.jpg" },
+            { name: "Superboy", url: "https://i.pinimg.com/736x/5d/00/58/5d005844eef285d812e9be68159918c3.jpg" },
+            { name: "Artemis", url: "https://i.pinimg.com/736x/ff/d7/52/ffd752846fd6f3b8af644adcab297ceb.jpg" },
+            { name: "Wonder Girl", url: "https://i.pinimg.com/736x/fc/24/37/fc2437d881df91527f6c0258fa789fd3.jpg" },
+            { name: "Yoshi", url: "https://i.pinimg.com/736x/44/39/d9/4439d934fef155334249c6f1c1465925.jpg" },
+            { name: "Goomba", url: "https://i.pinimg.com/736x/de/d4/cc/ded4ccf551346be050aa1822dfc1f890.jpg" },
+            { name: "Rosalinda", url: "https://i.pinimg.com/736x/da/87/05/da87056e17f0b24989898b059a1b0560.jpg" },
+            { name: "Peach", url: "https://i.pinimg.com/736x/72/fb/81/72fb818ba60e9b39b28d38fe7984a184.jpg" },
+            { name: "Silver", url: "https://i.pinimg.com/736x/12/22/a2/1222a2b28d00a653008e64bca1dfd479.jpg" },
+            { name: "Shadow", url: "https://i.pinimg.com/736x/3f/3b/ce/3f3bced5dbff16529889d89f2610ae86.jpg" },
+            { name: "Blaze", url: "https://i.pinimg.com/736x/b8/89/61/b889619ef87861b12d6171172cf851a1.jpg" },
+            { name: "Rouge", url: "https://i.pinimg.com/736x/7e/5b/16/7e5b16d8d096e994a0a636a93e9e6e5f.jpg" },
+            { name: "Legoshi", url: "https://i.pinimg.com/736x/47/c0/e1/47c0e1e6ad0a46be011c5aac756f8cb4.jpg" },
+            { name: "Juno", url: "https://i.pinimg.com/736x/ff/ba/d2/ffbad241f652ae96e57b718f79dfd09d.jpg" },
+            { name: "Michiru", url: "https://i.pinimg.com/736x/c6/e4/b0/c6e4b0c41216b7fbee97bdf5d0753678.jpg" },
+            { name: "Louis", url: "https://i.pinimg.com/736x/d0/1e/0d/d01e0d901fa283dad28223f5d2ce6cb7.jpg" }
+        ];
+
+        const MINIGAMES = ['Memory', 'HideAndSeek', 'Fortunflipper', 'GooseGame', 'ButtonMash', 'PigRacing', 'HotPotato'];
+
+        const state = {
+            userId: null,
+            userName: "Giocatore",
+            roomId: null,
+            isHost: false,
+            roomData: null,
+            unsubRoom: null,
+            localCharIdx: -1,
+            charTimer: null,
+            myPlayerObj: null,
+            minigameLoop: null,
+            minigameLocalState: {}
+        };
+
+        // UI Helpers
+        const showToast = (msg) => {
+            const t = document.createElement('div');
+            t.className = 'toast'; t.innerText = msg;
+            document.getElementById('toast-container').appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        };
+
+        const $ = id => document.getElementById(id);
+        const hideAllScreens = () => {
+            document.querySelectorAll('.screen-active, .game-container').forEach(el => {
+                el.classList.remove('screen-active');
+                if(el.classList.contains('game-container')) el.style.display = 'none';
+                else el.classList.add('hidden');
+            });
+        };
+        const showScreen = (id) => {
+            hideAllScreens();
+            const el = $(id);
+            if(el.classList.contains('game-container')) el.style.display = 'flex';
+            else { el.classList.remove('hidden'); el.classList.add('screen-active'); }
+        };
+
+        window.ui = {
+            showMenu: () => showScreen('screen-menu'),
+            showCreateRoom: () => {
+                const name = $('player-name').value.trim();
+                if(!name) return showToast("Inserisci un nome!");
+                state.userName = name;
+                showScreen('screen-create');
+            },
+            showJoinRoom: () => {
+                const name = $('player-name').value.trim();
+                if(!name) return showToast("Inserisci un nome!");
+                state.userName = name;
+                showScreen('screen-join');
+            }
+        };
+
+        window.settings = {
+            maxPlayers: 4,
+            maxGames: 3,
+            modPlayers: (d) => {
+                settings.maxPlayers = Math.max(3, Math.min(10, settings.maxPlayers + d));
+                $('set-players').innerText = settings.maxPlayers;
+            },
+            modGames: (d) => {
+                settings.maxGames = Math.max(1, Math.min(32, settings.maxGames + d));
+                $('set-games').innerText = settings.maxGames;
+            }
+        };
+
+        // Autenticazione Firebase
+        signInAnonymously(auth).then((userCred) => {
+            state.userId = userCred.user.uid;
+            console.log("Auth success", state.userId);
+        }).catch(e => {
+            showToast("Errore connessione server!");
+            console.error(e);
+        });
+
+        window.network = {
+            getRoomRef: (id) => doc(db, 'artifacts', appId, 'public', 'data', 'rooms', id),
+            
+            createRoom: async () => {
+                if(!state.userId) return showToast("Attendi connessione...");
+                const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+                state.roomId = code;
+                state.isHost = true;
+
+                // Genera lista minigiochi casuale
+                let selectedGames = [];
+                for(let i=0; i<settings.maxGames; i++) {
+                    selectedGames.push(MINIGAMES[Math.floor(Math.random() * MINIGAMES.length)]);
+                }
+
+                const initialData = {
+                    id: code,
+                    hostId: state.userId,
+                    status: 'lobby', // lobby, char_select, playing, scoreboard, finished
+                    settings: { p: settings.maxPlayers, g: settings.maxGames },
+                    players: [{ id: state.userId, name: state.userName, isBot: false, charIdx: -1, score: 0, ready: false }],
+                    currentRound: 0,
+                    minigames: selectedGames,
+                    gameState: {}
+                };
+
+                try {
+                    await setDoc(network.getRoomRef(code), initialData);
+                    network.listenRoom(code);
+                    $('lobby-code').innerText = code;
+                    showScreen('screen-lobby');
+                } catch(e) { console.error(e); showToast("Errore creazione stanza"); }
+            },
+
+            joinRoom: async () => {
+                if(!state.userId) return;
+                const code = $('room-code-input').value.trim().toUpperCase();
+                if(code.length !== 4) return showToast("Codice non valido");
+                
+                try {
+                    const snap = await getDoc(network.getRoomRef(code));
+                    if(!snap.exists()) return showToast("Stanza non trovata!");
+                    const data = snap.data();
+                    if(data.status !== 'lobby') return showToast("Partita già in corso!");
+                    if(data.players.length >= data.settings.p) return showToast("Stanza piena!");
+                    
+                    // Add self
+                    const newPlayers = [...data.players, { id: state.userId, name: state.userName, isBot: false, charIdx: -1, score: 0, ready: false }];
+                    await updateDoc(network.getRoomRef(code), { players: newPlayers });
+                    
+                    state.roomId = code;
+                    state.isHost = false;
+                    $('lobby-code').innerText = code;
+                    network.listenRoom(code);
+                    showScreen('screen-lobby');
+                } catch(e) { console.error(e); }
+            },
+
+            leaveRoom: () => {
+                if(state.unsubRoom) state.unsubRoom();
+                if(!state.isHost && state.roomId && state.roomData) {
+                    const newPlayers = state.roomData.players.filter(p => p.id !== state.userId);
+                    updateDoc(network.getRoomRef(state.roomId), { players: newPlayers });
+                }
+                state.roomId = null;
+                showScreen('screen-menu');
+            },
+
+            listenRoom: (code) => {
+                if(state.unsubRoom) state.unsubRoom();
+                state.unsubRoom = onSnapshot(network.getRoomRef(code), (snap) => {
+                    if(!snap.exists()) { showToast("Stanza chiusa"); return network.leaveRoom(); }
+                    const data = snap.data();
+                    const oldStatus = state.roomData ? state.roomData.status : '';
+                    state.roomData = data;
+                    state.myPlayerObj = data.players.find(p => p.id === state.userId);
+
+                    gameLogic.syncUI(oldStatus);
+                }, (err) => { console.error(err); showToast("Disconnesso"); });
+            },
+
+            updateGame: async (updates) => {
+                if(!state.roomId || !state.isHost) return;
+                await updateDoc(network.getRoomRef(state.roomId), updates);
+            },
+            
+            updatePlayerState: async (playerUpdates) => {
+                if(!state.roomId) return;
+                const newPlayers = state.roomData.players.map(p => 
+                    p.id === state.userId ? { ...p, ...playerUpdates } : p
+                );
+                await updateDoc(network.getRoomRef(state.roomId), { players: newPlayers });
+            },
+
+            // Host only actions
+            hostStartGame: async () => {
+                if(!state.isHost) return;
+                // Fill with bots
+                let currentPlayers = [...state.roomData.players];
+                const needed = state.roomData.settings.p - currentPlayers.length;
+                for(let i=0; i<needed; i++) {
+                    currentPlayers.push({
+                        id: 'bot_' + i, name: 'Bot ' + (i+1), isBot: true, charIdx: -1, score: 0, ready: false
+                    });
+                }
+                await network.updateGame({ players: currentPlayers, status: 'char_select' });
+            },
+
+            hostNextRound: async () => {
+                if(!state.isHost) return;
+                const r = state.roomData.currentRound;
+                if(r >= state.roomData.settings.g) {
+                    await network.updateGame({ status: 'finished' });
+                } else {
+                    // Reset ready states
+                    const newPlayers = state.roomData.players.map(p => ({...p, ready: false}));
+                    await network.updateGame({ players: newPlayers, status: 'playing', currentRound: r + 1, gameState: { init: true } });
+                }
+            }
+        };
+
+        window.gameLogic = {
+            syncUI: (oldStatus) => {
+                const d = state.roomData;
+                if(!d) return;
+
+                // Sync Lobby
+                if(d.status === 'lobby') {
+                    $('lobby-players').innerHTML = d.players.map(p => 
+                        `<div class="bg-white/20 px-4 py-2 rounded-lg font-bold flex items-center gap-2">
+                            ${p.id === d.hostId ? '👑' : '👤'} ${p.name}
+                        </div>`
+                    ).join('');
+                    
+                    if(state.isHost) $('btn-start-game').classList.remove('hidden');
+                    $('lobby-status').innerText = `${d.players.length} / ${d.settings.p} Giocatori`;
+                }
+
+                // Transition to Char Select
+                if(d.status === 'char_select' && oldStatus !== 'char_select') {
+                    gameLogic.initCharSelect();
+                    showScreen('screen-char-select');
+                }
+
+                // Inside Char Select (sync locks)
+                if(d.status === 'char_select') {
+                    gameLogic.updateCharGrid();
+                    // Check if everyone is ready
+                    if(state.isHost) {
+                        const humans = d.players.filter(p => !p.isBot);
+                        const allHumansReady = humans.every(p => p.ready);
+                        if(allHumansReady && !state.minigameLocalState.botsLocked) {
+                            state.minigameLocalState.botsLocked = true;
+                            // Assign random chars to bots and proceed
+                            let available = Array.from({length: CHARACTERS.length}, (_,i)=>i);
+                            humans.forEach(h => available = available.filter(idx => idx !== h.charIdx));
+                            
+                            const finalPlayers = d.players.map(p => {
+                                if(p.isBot) {
+                                    const c = available.splice(Math.floor(Math.random()*available.length), 1)[0];
+                                    return {...p, charIdx: c, ready: true};
+                                }
+                                return p;
+                            });
+                            network.updateGame({ players: finalPlayers, status: 'scoreboard', currentRound: 0 });
+                        }
+                    }
+                }
+
+                // Scoreboard
+                if(d.status === 'scoreboard' && oldStatus !== 'scoreboard') {
+                    showScreen('screen-scoreboard');
+                    $('score-round').innerText = d.currentRound === 0 ? "Pronti?" : `Fine Round ${d.currentRound} di ${d.settings.g}`;
+                    $('score-title').innerText = d.currentRound === 0 ? "Torneo Iniziato!" : "Classifica";
+                    
+                    // Sort by score
+                    const sorted = [...d.players].sort((a,b) => b.score - a.score);
+                    $('score-list').innerHTML = sorted.map((p, i) => `
+                        <div class="flex items-center justify-between bg-black/30 p-3 rounded-lg border border-white/10">
+                            <div class="flex items-center gap-3">
+                                <span class="font-bold text-xl text-yellow-400 w-6">${i+1}°</span>
+                                <div class="w-10 h-10 rounded-full bg-cover bg-center border-2 border-white" style="background-image: url('${CHARACTERS[p.charIdx]?.url}')"></div>
+                                <span class="font-bold">${p.name} ${p.isBot ? '(BOT)' : ''}</span>
+                            </div>
+                            <span class="font-bold text-2xl">${p.score} pt</span>
+                        </div>
+                    `).join('');
+
+                    if(state.isHost) {
+                        $('score-host-controls').classList.remove('hidden');
+                        $('score-wait-msg').classList.add('hidden');
+                    }
+                }
+
+                // Start Minigame
+                if(d.status === 'playing' && oldStatus !== 'playing') {
+                    const gameName = d.minigames[d.currentRound - 1];
+                    gameLogic.startMinigame(gameName);
+                }
+
+                // Handle specific minigame state updates
+                if(d.status === 'playing') {
+                    const gameName = d.minigames[d.currentRound - 1];
+                    if(minigames[gameName] && minigames[gameName].onSync) {
+                        minigames[gameName].onSync(d.gameState);
+                    }
+                }
+
+                // Finished
+                if(d.status === 'finished' && oldStatus !== 'finished') {
+                    $('score-title').innerText = "VINCITORE!";
+                    $('score-round').innerText = "Torneo Concluso";
+                    if(state.isHost) $('score-host-controls').classList.add('hidden');
+                    showScreen('screen-scoreboard');
+                }
+            },
+
+            initCharSelect: () => {
+                state.localCharIdx = -1;
+                state.minigameLocalState = { botsLocked: false };
+                const grid = $('char-grid');
+                grid.innerHTML = CHARACTERS.map((c, i) => `
+                    <div class="char-card relative rounded-lg overflow-hidden bg-white/10 aspect-square flex items-center justify-center" id="char-card-${i}" onclick="gameLogic.selectChar(${i})">
+                        <img src="${c.url}" class="w-full h-full object-cover pointer-events-none" onerror="this.src='https://placehold.co/100x100/333/FFF?text=?';">
+                        <div class="absolute bottom-0 w-full bg-black/70 text-center text-xs py-1 font-bold truncate px-1">${c.name}</div>
+                    </div>
+                `).join('');
+                
+                // 90s Timer
+                let t = 90;
+                if(state.charTimer) clearInterval(state.charTimer);
+                state.charTimer = setInterval(() => {
+                    t--; $('char-timer').innerText = `Tempo: ${t}`;
+                    if(t<=0) {
+                        clearInterval(state.charTimer);
+                        if(!state.myPlayerObj.ready) gameLogic.lockCharacter(); // Auto lock
+                    }
+                }, 1000);
+            },
+
+            selectChar: (idx) => {
+                if(state.myPlayerObj?.ready) return;
+                // Check if taken by others
+                const taken = state.roomData.players.some(p => p.charIdx === idx && p.id !== state.userId);
+                if(taken) return;
+
+                state.localCharIdx = idx;
+                document.querySelectorAll('.char-card').forEach(el => el.classList.remove('selected'));
+                $(`char-card-${idx}`).classList.add('selected');
+                $('my-selected-char-name').innerText = CHARACTERS[idx].name;
+                $('my-selected-char-img').style.backgroundImage = `url('${CHARACTERS[idx].url}')`;
+                $('btn-lock-char').disabled = false;
+            },
+
+            updateCharGrid: () => {
+                const pList = state.roomData.players;
+                document.querySelectorAll('.char-card').forEach((el, i) => {
+                    const isTaken = pList.some(p => p.charIdx === i && p.id !== state.userId);
+                    if(isTaken) el.classList.add('taken');
+                    else el.classList.remove('taken');
+                });
+            },
+
+            lockCharacter: () => {
+                if(state.localCharIdx === -1) {
+                    // Auto pick random available
+                    let available = Array.from({length: CHARACTERS.length}, (_,i)=>i);
+                    state.roomData.players.forEach(p => {
+                        if(p.charIdx !== -1) available = available.filter(i => i !== p.charIdx);
+                    });
+                    state.localCharIdx = available[Math.floor(Math.random()*available.length)];
+                }
+                $('btn-lock-char').disabled = true;
+                $('btn-lock-char').innerText = "Attesa...";
+                network.updatePlayerState({ charIdx: state.localCharIdx, ready: true });
+            },
+
+            startMinigame: (name) => {
+                console.log("Starting minigame:", name);
+                state.minigameLocalState = {}; // Reset local state
+                
+                // Common mapping
+                const mappedName = {
+                    'Memory': 'memory',
+                    'HideAndSeek': 'hide',
+                    'Fortunflipper': 'flipper',
+                    'GooseGame': 'goose',
+                    'ButtonMash': 'mash',
+                    'PigRacing': 'pigs',
+                    'HotPotato': 'potato'
+                }[name];
+
+                if(mappedName && minigames[mappedName]) {
+                    showScreen(`game-${mappedName}`);
+                    minigames[mappedName].init();
+                } else {
+                    console.error("Minigame not found", name);
+                    showToast("Minigioco non implementato, salto...");
+                    setTimeout(() => gameLogic.endMinigameLocal([{id: state.userId, score: 0}]), 2000);
+                }
+            },
+
+            // Called by host to award points and end round
+            endMinigameHost: async (placements) => {
+                if(!state.isHost) return;
+                // placements: array of player IDs in order of winning
+                const pointsMap = [10, 8, 6, 4, 3, 2, 1, 0, 0, 0];
+                const newPlayers = [...state.roomData.players];
+                
+                placements.forEach((pid, rank) => {
+                    const p = newPlayers.find(x => x.id === pid);
+                    if(p) p.score += (pointsMap[rank] || 0);
+                });
+
+                await network.updateGame({ players: newPlayers, status: 'scoreboard' });
+            }
+        };
+
+        const botHelper = {
+            runBots: (gameName, interval, logicFn) => {
+                if(!state.isHost) return;
+                state.minigameLocalState.botInterval = setInterval(() => {
+                    if(state.roomData.status !== 'playing') {
+                        clearInterval(state.minigameLocalState.botInterval); return;
+                    }
+                    const bots = state.roomData.players.filter(p => p.isBot);
+                    logicFn(bots);
+                }, interval);
+            }
+        };
+
+        const minigames = {
+            mash: {
+                init: () => {
+                    state.minigameLocalState = { clicks: 0, isRed: true, finished: false };
+                    $('mash-bar').style.width = '0%';
+                    $('mash-pct').innerText = '0%';
+                    $('mash-opponents').innerHTML = state.roomData.players.filter(p=>p.id!==state.userId).map(p=>`
+                        <div class="flex items-center gap-2 text-sm"><div class="w-6 h-6 rounded-full bg-cover" style="background-image:url('${CHARACTERS[p.charIdx]?.url}')"></div> ${p.name}: <span id="mash-opp-${p.id}">0%</span></div>
+                    `).join('');
+
+                    if(state.isHost) {
+                        network.updateGame({ gameState: { isRed: true, finishedPlayers: [] } });
+                        // Host toggle logic
+                        const toggleLight = () => {
+                            if(state.roomData.status !== 'playing') return;
+                            const isR = Math.random() > 0.4;
+                            network.updateGame({ gameState: { ...state.roomData.gameState, isRed: isR } });
+                            setTimeout(toggleLight, 1500 + Math.random()*2000);
+                        };
+                        setTimeout(toggleLight, 2000);
+
+                        // Bot logic
+                        botHelper.runBots('mash', 200, (bots) => {
+                            const gs = state.roomData.gameState;
+                            if(!gs || gs.isRed) return; // Bots don't click on red for simplicity
+                            let updates = {};
+                            bots.forEach(b => {
+                                if(gs.finishedPlayers?.includes(b.id)) return;
+                                // Randomly click
+                                if(Math.random() > 0.3) {
+                                    const cur = state.minigameLocalState[`bot_${b.id}`] || 0;
+                                    const n = cur + 2; // bots click 5 times a sec
+                                    state.minigameLocalState[`bot_${b.id}`] = n;
+                                    if(n >= 100) {
+                                        let fp = gs.finishedPlayers || [];
+                                        fp.push(b.id);
+                                        updates.finishedPlayers = fp;
+                                    }
+                                }
+                            });
+                            if(Object.keys(updates).length > 0) network.updateGame({ gameState: {...gs, ...updates} });
+                        });
+                    }
+                },
+                clickBtn: () => {
+                    if(state.minigameLocalState.finished) return;
+                    const gs = state.roomData.gameState;
+                    if(!gs) return;
+                    
+                    if(gs.isRed) {
+                        state.minigameLocalState.clicks = Math.max(0, state.minigameLocalState.clicks - 10);
+                        showToast("-10!");
+                    } else {
+                        state.minigameLocalState.clicks += 2; // 50 clicks to win
+                    }
+                    
+                    let p = Math.min(100, state.minigameLocalState.clicks);
+                    $('mash-bar').style.width = p + '%';
+                    $('mash-pct').innerText = p + '%';
+
+                    // Sync progress occasionally
+                    if(Math.random() > 0.7) {
+                        network.updatePlayerState({ mashProgress: p });
+                    }
+
+                    if(p >= 100) {
+                        state.minigameLocalState.finished = true;
+                        $('btn-mash').innerText = "FINITO!";
+                        let fp = gs.finishedPlayers || [];
+                        fp.push(state.userId);
+                        network.updateGame({ gameState: { ...gs, finishedPlayers: fp } });
+                    }
+                },
+                onSync: (gs) => {
+                    if(gs.isRed) {
+                        $('mash-light').classList.remove('light-green');
+                        $('mash-light').classList.add('light-red');
+                    } else {
+                        $('mash-light').classList.remove('light-red');
+                        $('mash-light').classList.add('light-green');
+                    }
+
+                    // Sync opponent progress (from player state or bots)
+                    state.roomData.players.forEach(p => {
+                        if(p.id !== state.userId && $(`mash-opp-${p.id}`)) {
+                            let prog = p.mashProgress || 0;
+                            if(p.isBot && state.isHost) prog = state.minigameLocalState[`bot_${p.id}`] || 0;
+                            $(`mash-opp-${p.id}`).innerText = Math.min(100, prog) + '%';
+                        }
+                    });
+
+                    // Check end condition
+                    if(state.isHost && gs.finishedPlayers) {
+                        if(gs.finishedPlayers.length >= state.roomData.players.length - 1) {
+                            // Add last player
+                            const allIds = state.roomData.players.map(p=>p.id);
+                            const last = allIds.find(id => !gs.finishedPlayers.includes(id));
+                            if(last) gs.finishedPlayers.push(last);
+                            gameLogic.endMinigameHost(gs.finishedPlayers);
+                        }
+                    }
+                }
+            },
+
+            memory: {
+                init: () => {
+                    // Create 6x6 grid (18 pairs)
+                    const icons = ['🍎','🍌','🍇','🍉','🍓','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🥑','🍆','🥔','🥕','🌽','🥦'];
+                    let deck = [...icons, ...icons];
+                    deck.sort(() => Math.random() - 0.5);
+
+                    state.minigameLocalState = { deck, flipped: [], matched: [], locked: false };
+                    
+                    const grid = $('memory-grid');
+                    grid.innerHTML = deck.map((icon, i) => `
+                        <div class="memory-card w-12 h-12 md:w-16 md:h-16 relative cursor-pointer" id="mem-card-${i}" onclick="minigames.memory.flip(${i})">
+                            <div class="memory-front">?</div>
+                            <div class="memory-back text-3xl">${icon}</div>
+                        </div>
+                    `).join('');
+
+                    // Opponent grids
+                    $('memory-opponents').innerHTML = state.roomData.players.filter(p=>p.id!==state.userId).map(p=>`
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-cover" style="background-image:url('${CHARACTERS[p.charIdx]?.url}')"></div>
+                            <div class="grid grid-cols-6" id="mem-opp-${p.id}">
+                                ${Array(36).fill('<div class="mini-grid-cell"></div>').join('')}
+                            </div>
+                        </div>
+                    `).join('');
+
+                    if(state.isHost) {
+                        network.updateGame({ gameState: { finished: [] } });
+                        
+                        // Bots
+                        botHelper.runBots('memory', 2000, (bots) => {
+                            let gs = state.roomData.gameState;
+                            let updates = false;
+                            bots.forEach(b => {
+                                if(gs.finished?.includes(b.id)) return;
+                                let m = state.minigameLocalState[`bot_m_${b.id}`] || [];
+                                // Bot finds a pair 50% of the time
+                                if(Math.random() > 0.5 && m.length < 36) {
+                                    // Add 2 to matched
+                                    m.push(m.length, m.length+1); 
+                                    state.minigameLocalState[`bot_m_${b.id}`] = m;
+                                    updates = true;
+                                    if(m.length >= 36) {
+                                        if(!gs.finished) gs.finished = [];
+                                        gs.finished.push(b.id);
+                                    }
+                                }
+                            });
+                            if(updates) network.updateGame({ gameState: gs });
+                        });
+                    }
+                },
+                flip: (i) => {
+                    const st = state.minigameLocalState;
+                    if(st.locked || st.matched.includes(i) || st.flipped.includes(i)) return;
+                    
+                    st.flipped.push(i);
+                    $(`mem-card-${i}`).classList.add('flipped');
+
+                    if(st.flipped.length === 2) {
+                        st.locked = true;
+                        const [c1, c2] = st.flipped;
+                        if(st.deck[c1] === st.deck[c2]) {
+                            st.matched.push(c1, c2);
+                            st.flipped = [];
+                            st.locked = false;
+                            // Sync progress to DB occasionally or via player doc
+                            network.updatePlayerState({ memoryMatched: st.matched });
+                            
+                            if(st.matched.length === 36) {
+                                const gs = state.roomData.gameState;
+                                let f = gs.finished || [];
+                                f.push(state.userId);
+                                network.updateGame({ gameState: {...gs, finished: f} });
+                            }
+                        } else {
+                            setTimeout(() => {
+                                $(`mem-card-${c1}`).classList.remove('flipped');
+                                $(`mem-card-${c2}`).classList.remove('flipped');
+                                st.flipped = [];
+                                st.locked = false;
+                            }, 1000);
+                        }
+                    }
+                },
+                onSync: (gs) => {
+                    // Update opponent mini grids
+                    state.roomData.players.forEach(p => {
+                        if(p.id !== state.userId && $(`mem-opp-${p.id}`)) {
+                            let m = p.memoryMatched || [];
+                            if(p.isBot && state.isHost) m = state.minigameLocalState[`bot_m_${p.id}`] || [];
+                            const cells = $(`mem-opp-${p.id}`).children;
+                            for(let i=0; i<36; i++) {
+                                if(m.includes(i)) cells[i].classList.add('solved');
+                            }
+                        }
+                    });
+
+                    // Check win
+                    if(state.isHost && gs.finished) {
+                        if(gs.finished.length >= state.roomData.players.length - 1) {
+                             const allIds = state.roomData.players.map(p=>p.id);
+                             const last = allIds.find(id => !gs.finished.includes(id));
+                             if(last) gs.finished.push(last);
+                             gameLogic.endMinigameHost(gs.finished);
+                        }
+                    }
+                }
+            },
+
+            hide: {
+                init: () => {
+                    state.minigameLocalState = { round: 0, scores: {} };
+                    state.roomData.players.forEach(p => state.minigameLocalState.scores[p.id] = 0);
+                    if(state.isHost) {
+                        minigames.hide.startRoundHost(0);
+                    }
+                },
+                startRoundHost: (roundIdx) => {
+                    if(roundIdx >= state.roomData.players.length) {
+                        // End game, rank by scores
+                        const scores = state.minigameLocalState.scores;
+                        const sortedIds = Object.keys(scores).sort((a,b) => scores[b] - scores[a]);
+                        return gameLogic.endMinigameHost(sortedIds);
+                    }
+                    const seekerId = state.roomData.players[roundIdx].id;
+                    network.updateGame({ gameState: { 
+                        phase: 'hiding', // hiding, seeking, reveal
+                        seeker: seekerId,
+                        round: roundIdx,
+                        hides: {}, // {pid: objId}
+                        timer: Date.now() + 15000 
+                    }});
+
+                    // Bot hiding logic
+                    setTimeout(() => {
+                        const gs = state.roomData.gameState;
+                        let hides = {...gs.hides};
+                        state.roomData.players.filter(p=>p.isBot && p.id !== seekerId).forEach(b => {
+                            hides[b.id] = Math.floor(Math.random() * 8);
+                        });
+                        network.updateGame({ gameState: {...gs, hides} });
+                    }, 2000);
+                },
+                clickObj: (idx) => {
+                    const gs = state.roomData.gameState;
+                    if(gs.phase === 'hiding' && gs.seeker !== state.userId) {
+                        document.querySelectorAll('.hide-obj').forEach(el=>el.classList.remove('selected'));
+                        document.querySelectorAll('.hide-obj')[idx].classList.add('selected');
+                        state.minigameLocalState.myPick = idx;
+                        $('btn-hide-action').classList.remove('hidden');
+                        $('btn-hide-action').innerText = "Nasconditi qui";
+                    } else if(gs.phase === 'seeking' && gs.seeker === state.userId) {
+                        let picks = state.minigameLocalState.seekPicks || [];
+                        if(picks.includes(idx)) return;
+                        picks.push(idx);
+                        document.querySelectorAll('.hide-obj')[idx].classList.add('searched');
+                        state.minigameLocalState.seekPicks = picks;
+                        if(picks.length >= 4) {
+                            network.updateGame({ gameState: {...gs, phase: 'reveal', seekerPicks: picks} });
+                        }
+                    }
+                },
+                confirmAction: () => {
+                    const gs = state.roomData.gameState;
+                    if(gs.phase === 'hiding' && state.minigameLocalState.myPick !== undefined) {
+                        let hides = gs.hides || {};
+                        hides[state.userId] = state.minigameLocalState.myPick;
+                        network.updateGame({ gameState: {...gs, hides} });
+                        $('btn-hide-action').classList.add('hidden');
+                        showToast("Nascosto!");
+                    }
+                },
+                onSync: (gs) => {
+                    const seeker = state.roomData.players.find(p=>p.id === gs.seeker);
+                    if(gs.phase === 'hiding') {
+                        $('hide-status').innerText = `Turno di ${seeker.name} (Cerca). Nascondetevi!`;
+                        $('hide-timer').classList.remove('hidden');
+                        $('hide-reveal').innerHTML = '';
+                        document.querySelectorAll('.hide-obj').forEach(el=>{el.classList.remove('searched', 'selected');});
+                        
+                        // local timer visual
+                        let left = Math.round((gs.timer - Date.now())/1000);
+                        $('hide-timer').innerText = Math.max(0, left);
+                        
+                        if(state.isHost && left <= 0) {
+                            network.updateGame({ gameState: {...gs, phase: 'seeking'} });
+                            // If seeker is bot, pick 4 random
+                            if(seeker.isBot) {
+                                setTimeout(() => {
+                                    let arr = [0,1,2,3,4,5,6,7].sort(()=>0.5-Math.random()).slice(0,4);
+                                    network.updateGame({ gameState: {...gs, phase: 'reveal', seekerPicks: arr} });
+                                }, 3000);
+                            }
+                        }
+                    } else if(gs.phase === 'seeking') {
+                        $('hide-timer').classList.add('hidden');
+                        $('hide-status').innerText = gs.seeker === state.userId ? "Scegli 4 posti da cercare!" : `${seeker.name} sta cercando...`;
+                        state.minigameLocalState.seekPicks = [];
+                    } else if(gs.phase === 'reveal') {
+                        // Calculate scores
+                        if(state.isHost && !state.minigameLocalState.scoredRound) {
+                            state.minigameLocalState.scoredRound = true;
+                            let s = state.minigameLocalState.scores;
+                            let found = 0;
+                            Object.entries(gs.hides).forEach(([pid, loc]) => {
+                                if(gs.seekerPicks.includes(loc)) {
+                                    found++; // Seeker gets 1
+                                } else {
+                                    s[pid] += 0.5; // Hider gets 0.5
+                                }
+                            });
+                            s[gs.seeker] += found;
+                            setTimeout(() => minigames.hide.startRoundHost(gs.round + 1), 5000);
+                        }
+
+                        // Show reveal UI
+                        $('hide-status').innerText = "Risultati!";
+                        gs.seekerPicks.forEach(idx => document.querySelectorAll('.hide-obj')[idx].classList.add('searched'));
+                        
+                        let html = '';
+                        Object.entries(gs.hides).forEach(([pid, loc]) => {
+                            const p = state.roomData.players.find(x=>x.id===pid);
+                            const isFound = gs.seekerPicks.includes(loc);
+                            html += `<div class="p-2 bg-black/50 rounded flex items-center gap-2 border-2 ${isFound ? 'border-red-500' : 'border-green-500'}">
+                                <img src="${CHARACTERS[p.charIdx].url}" class="w-8 h-8 rounded-full">
+                                <span>${isFound ? 'Trovato!' : 'Salvo!'} (Box ${loc+1})</span>
+                            </div>`;
+                        });
+                        $('hide-reveal').innerHTML = html;
+                    }
+                }
+            },
+
+            pigs: {
+                init: () => {
+                    state.minigameLocalState = { myPick: -1 };
+                    const colors = ['red','blue','green','yellow','purple','orange','pink','cyan','lime','brown','teal','indigo'];
+                    const numPigs = state.roomData.players.length;
+                    const activeColors = colors.slice(0, numPigs);
+
+                    $('pigs-selector').innerHTML = activeColors.map((c, i) => `
+                        <button class="w-16 h-16 rounded-full border-4 shadow-lg flex items-center justify-center text-3xl transition-transform hover:scale-110" style="background-color: ${c}; border-color: white;" onclick="minigames.pigs.pickPig(${i})">🐷</button>
+                    `).join('');
+                    
+                    // Tracks
+                    $('pigs-track-container').innerHTML = activeColors.map((c, i) => `
+                        <div class="pig-track">
+                            <div class="pig-avatar" id="pig-av-${i}" style="background-image: url('https://cdn-icons-png.flaticon.com/512/1908/1908864.png'); background-color: ${c}"></div>
+                        </div>
+                    `).join('');
+
+                    if(state.isHost) {
+                        network.updateGame({ gameState: { phase: 'picking', picks: {}, positions: activeColors.map(()=>0), deck: [], activeColors } });
+                        
+                        // Bots picking
+                        setTimeout(() => {
+                            const gs = state.roomData.gameState;
+                            let picks = {...gs.picks};
+                            state.roomData.players.filter(p=>p.isBot).forEach(b => {
+                                picks[b.id] = Math.floor(Math.random() * numPigs);
+                            });
+                            network.updateGame({ gameState: {...gs, picks} });
+                        }, 2000);
+                    }
+                },
+                pickPig: (idx) => {
+                    const gs = state.roomData.gameState;
+                    if(gs.phase !== 'picking' || state.minigameLocalState.myPick !== -1) return;
+                    state.minigameLocalState.myPick = idx;
+                    let picks = gs.picks || {};
+                    picks[state.userId] = idx;
+                    network.updateGame({ gameState: {...gs, picks} });
+                    showToast("Hai scommesso!");
+                },
+                onSync: (gs) => {
+                    if(!gs.activeColors) return;
+                    if(gs.phase === 'picking') {
+                        if(state.isHost && Object.keys(gs.picks).length === state.roomData.players.length) {
+                            // Create deck (10 cards per pig)
+                            let deck = [];
+                            gs.activeColors.forEach((c, i) => { for(let j=0; j<10; j++) deck.push(i); });
+                            deck.sort(() => Math.random() - 0.5);
+                            network.updateGame({ gameState: {...gs, phase: 'racing', deck} });
+                        }
+                    } else if(gs.phase === 'racing') {
+                        $('pigs-selector').classList.add('hidden');
+                        $('pigs-track-container').classList.remove('hidden');
+                        $('pigs-card').classList.remove('hidden');
+                        $('pigs-instruction').innerText = "Corsa in corso!";
+
+                        // Update positions visual
+                        gs.positions.forEach((pos, i) => {
+                            const pct = Math.min(100, (pos / 10) * 90); // 10 steps to win
+                            $(`pig-av-${i}`).style.left = `${pct}%`;
+                        });
+
+                        // Show drawn card
+                        if(gs.lastDraw !== undefined) {
+                            $('pigs-card').style.backgroundColor = gs.activeColors[gs.lastDraw];
+                            // pop animation
+                            $('pigs-card').style.transform = 'scale(1.2)';
+                            setTimeout(() => $('pigs-card').style.transform = 'scale(1)', 200);
+                        }
+
+                        // Host logic loop
+                        if(state.isHost && !state.minigameLocalState.drawing) {
+                            state.minigameLocalState.drawing = true;
+                            const drawInterval = setInterval(() => {
+                                const st = state.roomData.gameState;
+                                if(st.phase !== 'racing' || st.deck.length === 0) { clearInterval(drawInterval); return; }
+                                
+                                let newDeck = [...st.deck];
+                                let drawn = newDeck.pop();
+                                let newPos = [...st.positions];
+                                newPos[drawn]++;
+
+                                // Check win
+                                if(newPos[drawn] >= 10) {
+                                    clearInterval(drawInterval);
+                                    // Calculate rankings based on who picked this pig
+                                    let rankings = [];
+                                    // Winners first
+                                    state.roomData.players.forEach(p => {
+                                        if(st.picks[p.id] === drawn) rankings.push(p.id);
+                                    });
+                                    // Others random or by position
+                                    state.roomData.players.forEach(p => {
+                                        if(!rankings.includes(p.id)) rankings.push(p.id);
+                                    });
+                                    network.updateGame({ gameState: {...st, phase: 'end', positions: newPos, lastDraw: drawn} });
+                                    setTimeout(() => gameLogic.endMinigameHost(rankings), 3000);
+                                } else {
+                                    network.updateGame({ gameState: {...st, deck: newDeck, positions: newPos, lastDraw: drawn} });
+                                }
+                            }, 1000);
+                        }
+                    }
+                }
+            },
+
+            potato: {
+                init: () => {
+                    const players = state.roomData.players;
+                    const container = $('potato-players');
+                    container.innerHTML = '';
+                    
+                    const radius = window.innerWidth > 600 ? 200 : 120;
+                    const center = { x: container.offsetWidth/2, y: container.offsetHeight/2 };
+
+                    players.forEach((p, i) => {
+                        const angle = (i / players.length) * Math.PI * 2;
+                        const x = center.x + radius * Math.cos(angle) - 30;
+                        const y = center.y + radius * Math.sin(angle) - 30;
+                        
+                        container.innerHTML += `
+                            <div class="absolute w-16 h-16 rounded-full border-4 border-white bg-cover cursor-pointer hover:scale-110 transition-transform" 
+                                style="left: ${x}px; top: ${y}px; background-image: url('${CHARACTERS[p.charIdx].url}');"
+                                onclick="minigames.potato.passBomb('${p.id}')" id="pot-p-${p.id}">
+                            </div>
+                        `;
+                    });
+
+                    if(state.isHost) {
+                        const explodeTime = Date.now() + 10000 + Math.random() * 15000;
+                        network.updateGame({ gameState: { holder: players[0].id, explodeTime, alive: players.map(p=>p.id), ranking: [] } });
+
+                        // Bot logic
+                        botHelper.runBots('potato', 500, (bots) => {
+                            const gs = state.roomData.gameState;
+                            if(gs.holder && bots.find(b=>b.id===gs.holder)) {
+                                if(Math.random() > 0.3) {
+                                    const others = gs.alive.filter(id => id !== gs.holder);
+                                    if(others.length > 0) {
+                                        const target = others[Math.floor(Math.random()*others.length)];
+                                        network.updateGame({ gameState: {...gs, holder: target} });
+                                    }
+                                }
+                            }
+                        });
+                    }
+                },
+                passBomb: (targetId) => {
+                    const gs = state.roomData.gameState;
+                    if(gs.holder === state.userId && gs.alive.includes(targetId) && targetId !== state.userId) {
+                        network.updateGame({ gameState: {...gs, holder: targetId} });
+                    }
+                },
+                onSync: (gs) => {
+                    if(!gs.holder) return;
+                    $('potato-bomb').classList.remove('hidden');
+                    
+                    // Move bomb visual
+                    const holderEl = $(`pot-p-${gs.holder}`);
+                    if(holderEl) {
+                        $('potato-bomb').style.position = 'absolute';
+                        $('potato-bomb').style.left = (parseInt(holderEl.style.left) - 15) + 'px';
+                        $('potato-bomb').style.top = (parseInt(holderEl.style.top) - 15) + 'px';
+                    }
+
+                    // Check explosion (Host)
+                    if(state.isHost && Date.now() > gs.explodeTime && gs.alive.length > 1) {
+                        let newAlive = gs.alive.filter(id => id !== gs.holder);
+                        let newRank = [gs.holder, ...gs.ranking]; // Loser goes to front of ranking array (will be reversed at end)
+                        
+                        if(newAlive.length === 1) {
+                            newRank = [newAlive[0], ...newRank]; // Winner at pos 0
+                            gameLogic.endMinigameHost(newRank);
+                        } else {
+                            const nextHolder = newAlive[Math.floor(Math.random()*newAlive.length)];
+                            network.updateGame({ gameState: { 
+                                ...gs, 
+                                alive: newAlive, 
+                                ranking: newRank,
+                                holder: nextHolder,
+                                explodeTime: Date.now() + 5000 + Math.random() * 10000
+                            }});
+                        }
+                    }
+
+                    // Visual update for dead players
+                    state.roomData.players.forEach(p => {
+                        const el = $(`pot-p-${p.id}`);
+                        if(el) el.style.opacity = gs.alive.includes(p.id) ? '1' : '0.2';
+                    });
+                }
+            },
+
+            flipper: {
+                init: () => {
+                    const numBalls = state.roomData.players.length + 1; // Always one extra
+                    $('flipper-selector').innerHTML = Array.from({length: numBalls}).map((_,i) => `
+                        <div class="w-12 h-12 bg-gray-300 rounded-full cursor-pointer hover:bg-white border-2 flex items-center justify-center font-bold text-black" ondblclick="minigames.flipper.pickBall(${i})">${i+1}</div>
+                    `).join('');
+                    
+                    $('flipper-board').classList.add('hidden');
+                    $('flipper-finish').classList.add('hidden');
+                    
+                    if(state.isHost) {
+                        // Generate board pegs (fixed logical grid)
+                        const pegs = [];
+                        for(let r=1; r<8; r++) {
+                            for(let c=1; c<6; c++) {
+                                pegs.push({x: c*50 + (r%2===0?25:0), y: r*50});
+                            }
+                        }
+                        network.updateGame({ gameState: { phase: 'picking', picks: {}, balls: {}, pegs, finished: [] } });
+
+                        // Bots pick
+                        setTimeout(() => {
+                            const gs = state.roomData.gameState;
+                            let picks = {...gs.picks};
+                            state.roomData.players.filter(p=>p.isBot).forEach((b,i) => picks[b.id] = i); // Simplistic pick
+                            network.updateGame({ gameState: {...gs, picks} });
+                        }, 2000);
+                    }
+                },
+                pickBall: (idx) => {
+                    const gs = state.roomData.gameState;
+                    if(gs.phase !== 'picking' || Object.values(gs.picks||{}).includes(idx)) return;
+                    network.updateGame({ gameState: {...gs, picks: {...gs.picks, [state.userId]: idx}} });
+                    showToast("Pallina scelta!");
+                },
+                clickUnstick: () => {
+                    if(!state.minigameLocalState.stuck) return;
+                    state.minigameLocalState.clicks = (state.minigameLocalState.clicks || 0) + 1;
+                    $('flipper-stuck-bar').style.width = (state.minigameLocalState.clicks * 10) + '%';
+                    if(state.minigameLocalState.clicks >= 10) {
+                        state.minigameLocalState.stuck = false;
+                        $('flipper-stuck-overlay').style.display = 'none';
+                        network.updatePlayerState({ unstick: Date.now() }); // Tell host I'm free
+                    }
+                },
+                onSync: (gs) => {
+                    if(gs.phase === 'picking') {
+                        if(state.isHost && Object.keys(gs.picks).length === state.roomData.players.length) {
+                            // Init balls
+                            let balls = {};
+                            Object.entries(gs.picks).forEach(([pid, bIdx]) => {
+                                balls[pid] = { x: 50 + (bIdx * 40), y: 0, stuck: false };
+                            });
+                            network.updateGame({ gameState: {...gs, phase: 'falling', balls} });
+                        }
+                    } else if(gs.phase === 'falling') {
+                        $('flipper-selector').classList.add('hidden');
+                        $('flipper-board').classList.remove('hidden');
+
+                        // Render pegs
+                        if(!$('flipper-board').querySelector('.flipper-peg')) {
+                            gs.pegs.forEach(p => {
+                                $('flipper-board').innerHTML += `<div class="flipper-peg" style="left:${p.x}px; top:${p.y}px;"></div>`;
+                            });
+                        }
+
+                        // Render balls
+                        Object.entries(gs.balls).forEach(([pid, b]) => {
+                            let el = $(`flip-ball-${pid}`);
+                            if(!el) {
+                                const p = state.roomData.players.find(x=>x.id===pid);
+                                $('flipper-board').innerHTML += `<div id="flip-ball-${pid}" class="flipper-ball" style="background-image:url('${CHARACTERS[p.charIdx].url}')"></div>`;
+                                el = $(`flip-ball-${pid}`);
+                            }
+                            el.style.left = b.x + 'px';
+                            el.style.top = b.y + 'px';
+
+                            // Stuck logic for self
+                            if(pid === state.userId) {
+                                if(b.stuck && !state.minigameLocalState.stuck) {
+                                    state.minigameLocalState.stuck = true;
+                                    state.minigameLocalState.clicks = 0;
+                                    $('flipper-stuck-bar').style.width = '0%';
+                                    $('flipper-stuck-overlay').style.display = 'flex';
+                                }
+                            }
+                        });
+
+                        // Host Physics Loop (Very simplified)
+                        if(state.isHost && !state.minigameLocalState.physicsRunning) {
+                            state.minigameLocalState.physicsRunning = true;
+                            const loop = setInterval(() => {
+                                const st = state.roomData.gameState;
+                                if(st.phase !== 'falling') { clearInterval(loop); return; }
+                                
+                                let newBalls = {...st.balls};
+                                let updates = false;
+                                
+                                Object.keys(newBalls).forEach(pid => {
+                                    if(st.finished.includes(pid)) return;
+                                    let b = newBalls[pid];
+                                    
+                                    // Check if unstick signal received
+                                    const pData = state.roomData.players.find(x=>x.id===pid);
+                                    if(b.stuck && pData.unstick && pData.unstick > (b.stuckTime||0)) {
+                                        b.stuck = false;
+                                    }
+
+                                    // Bot auto-unstick
+                                    if(b.stuck && pData.isBot && Math.random() < 0.2) b.stuck = false;
+
+                                    if(!b.stuck) {
+                                        b.y += 10;
+                                        b.x += (Math.random() - 0.5) * 15; // Random bounce
+                                        
+                                        // Bound to walls
+                                        b.x = Math.max(0, Math.min(276, b.x));
+
+                                        // Random stuck chance
+                                        if(Math.random() < 0.05 && b.y < 350) {
+                                            b.stuck = true;
+                                            b.stuckTime = Date.now();
+                                        }
+
+                                        if(b.y >= 380) {
+                                            st.finished.push(pid);
+                                        }
+                                        updates = true;
+                                    }
+                                });
+
+                                if(updates) {
+                                    if(st.finished.length >= state.roomData.players.length - 1) {
+                                        clearInterval(loop);
+                                        const allIds = state.roomData.players.map(p=>p.id);
+                                        const last = allIds.find(id => !st.finished.includes(id));
+                                        if(last) st.finished.push(last);
+                                        gameLogic.endMinigameHost(st.finished);
+                                    } else {
+                                        network.updateGame({ gameState: {...st, balls: newBalls, finished: st.finished} });
+                                    }
+                                }
+                            }, 200);
+                        }
+                        
+                        // Show finished
+                        if(gs.finished.length > 0) {
+                            $('flipper-finish').classList.remove('hidden');
+                            $('flipper-rankings').innerHTML = gs.finished.map((pid, i) => {
+                                const p = state.roomData.players.find(x=>x.id===pid);
+                                return `<div>${i+1}. ${p.name}</div>`;
+                            }).join('');
+                        }
+                    }
+                }
+            },
+
+            goose: {
+                init: () => {
+                    // Create board cells (8x8 grid for simplicity visually)
+                    const board = $('goose-board');
+                    board.innerHTML = '';
+                    for(let i=0; i<64; i++) {
+                        let content = i;
+                        if(i===0) content = "START";
+                        if(i===62) content = "END";
+                        board.innerHTML += `<div class="goose-cell" id="g-cell-${i}">${content}</div>`;
+                    }
+                    
+                    if(state.isHost) {
+                        let pPos = {};
+                        state.roomData.players.forEach(p => pPos[p.id] = 0);
+                        network.updateGame({ gameState: { turnIdx: 0, positions: pPos, logs: [] } });
+                    }
+                },
+                rollDice: () => {
+                    $('btn-goose-roll').classList.add('hidden');
+                    const roll = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1; // 2d6
+                    network.updatePlayerState({ gooseRoll: roll, rollTime: Date.now() });
+                },
+                onSync: (gs) => {
+                    if(gs.turnIdx === undefined) return;
+                    const pList = state.roomData.players;
+                    const curPlayer = pList[gs.turnIdx];
+
+                    // Render tokens
+                    $('goose-tokens').innerHTML = pList.map((p, i) => {
+                        const pos = gs.positions[p.id] || 0;
+                        const cell = $(`g-cell-${Math.min(63, pos)}`);
+                        if(!cell) return '';
+                        const rect = cell.getBoundingClientRect();
+                        const boardRect = $('goose-board').getBoundingClientRect();
+                        // Offset slightly based on player index to avoid stacking perfectly
+                        const ox = (i%3)*5; const oy = Math.floor(i/3)*5;
+                        return `<div class="goose-token" style="background-image:url('${CHARACTERS[p.charIdx].url}'); left: ${rect.left - boardRect.left + 5 + ox}px; top: ${rect.top - boardRect.top + 5 + oy}px;"></div>`;
+                    }).join('');
+
+                    // UI state
+                    if(curPlayer.id === state.userId) {
+                        $('goose-status').innerText = "È il tuo turno!";
+                        $('btn-goose-roll').classList.remove('hidden');
+                    } else {
+                        $('goose-status').innerText = `Turno di ${curPlayer.name}`;
+                        $('btn-goose-roll').classList.add('hidden');
+                    }
+
+                    // Logs
+                    $('goose-logs').innerHTML = (gs.logs||[]).slice(-5).map(l => `<div>${l}</div>`).join('');
+                    $('goose-logs').scrollTop = $('goose-logs').scrollHeight;
+
+                    // Host logic: process rolls
+                    if(state.isHost) {
+                        // Check if current player rolled
+                        if(curPlayer.rollTime && curPlayer.rollTime !== state.minigameLocalState.lastProcessedRoll) {
+                            state.minigameLocalState.lastProcessedRoll = curPlayer.rollTime;
+                            minigames.goose.processTurn(curPlayer.id, curPlayer.gooseRoll, gs);
+                        }
+                        
+                        // Bot roll
+                        if(curPlayer.isBot && !state.minigameLocalState.botRolling) {
+                            state.minigameLocalState.botRolling = true;
+                            setTimeout(() => {
+                                state.minigameLocalState.botRolling = false;
+                                if(state.roomData.gameState.turnIdx === gs.turnIdx) { // still their turn
+                                    const roll = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1;
+                                    minigames.goose.processTurn(curPlayer.id, roll, state.roomData.gameState);
+                                }
+                            }, 1500);
+                        }
+                    }
+                },
+                processTurn: (pid, roll, gs) => {
+                    let pos = gs.positions[pid];
+                    let logs = gs.logs || [];
+                    const pName = state.roomData.players.find(x=>x.id===pid).name;
+                    
+                    logs.push(`> ${pName} ha tirato ${roll}`);
+                    pos += roll;
+                    
+                    // Special cells logic (simplified version based on prompt)
+                    if([5, 15, 25].includes(pos)) { pos += 2; logs.push(`+2 caselle!`); }
+                    if([10, 20, 30].includes(pos)) { pos -= 2; logs.push(`-2 caselle!`); }
+                    if(pos === 48) { pos = 32; logs.push(`Torna alla 32!`); }
+
+                    if(pos >= 62) pos = 62;
+
+                    let newPos = {...gs.positions};
+                    newPos[pid] = pos;
+
+                    // Check win
+                    let finished = gs.finished || [];
+                    if(pos === 62 && !finished.includes(pid)) {
+                        finished.push(pid);
+                        logs.push(`🏆 ${pName} è arrivato!`);
+                    }
+
+                    let nextIdx = (gs.turnIdx + 1) % state.roomData.players.length;
+                    // Skip finished players
+                    let attempts = 0;
+                    while(finished.includes(state.roomData.players[nextIdx].id) && attempts < 10) {
+                        nextIdx = (nextIdx + 1) % state.roomData.players.length;
+                        attempts++;
+                    }
+
+                    if(finished.length >= state.roomData.players.length - 1) {
+                        // End
+                        const allIds = state.roomData.players.map(p=>p.id);
+                        const last = allIds.find(id => !finished.includes(id));
+                        if(last) finished.push(last);
+                        network.updateGame({ gameState: {...gs, positions: newPos, logs} });
+                        setTimeout(() => gameLogic.endMinigameHost(finished), 2000);
+                    } else {
+                        network.updateGame({ gameState: {...gs, positions: newPos, logs, turnIdx: nextIdx, finished} });
+                    }
+                }
+            }
+        };
+
+        ui.showMenu();
+    </script>
+</body>
+</html>
